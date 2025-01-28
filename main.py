@@ -71,9 +71,11 @@ def main(page: ft.Page):
             data_tables_container = ft.Container(
                 content=ft.Column(
                     controls=[data_table_1, data_table_2, data_table_3],
-                    scroll='auto',
+                    scroll = ft.ScrollMode.AUTO,
+                    expand=True
                 ),
                 alignment=ft.alignment.center,
+                expand = True
             )
 
             # Add the container to the current view
@@ -122,13 +124,6 @@ def main(page: ft.Page):
                                             "Simplify Group Decisions with Confidence.",
                                             style=ft.TextStyle(
                                                 size=24,
-                                                weight=ft.FontWeight.NORMAL
-                                            )
-                                        ),
-                                        ft.Text(
-                                            "Harness the power of advanced algorithms to bring clarity, collaboration, and consensus to any decision-making process.",
-                                            style=ft.TextStyle(
-                                                size=18,
                                                 weight=ft.FontWeight.NORMAL
                                             )
                                         ),
@@ -242,7 +237,9 @@ def main(page: ft.Page):
                                 ],
                                 alignment=ft.MainAxisAlignment.CENTER,
                                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                                spacing=20
+                                spacing=20,
+                                scroll = ft.ScrollMode.AUTO,
+                                expand=True
                             ),
                             alignment=ft.alignment.center,
                             padding=20
@@ -332,12 +329,12 @@ def main(page: ft.Page):
                                             expand=True
                                         )
                                     ],
-                                    alignment=ft.MainAxisAlignment.START,
-                                    horizontal_alignment=ft.CrossAxisAlignment.START,
-                                    spacing=20
+                                    alignment=ft.MainAxisAlignment.CENTER,
+                                    spacing=20,
+                                    scroll = ft.ScrollMode.AUTO,
+                                    expand=True
                                 ),
                                 alignment=ft.alignment.center,
-                                padding=ft.EdgeInsets.symmetric(horizontal=40),
                                 expand=True
                             ),
                             expand=True
