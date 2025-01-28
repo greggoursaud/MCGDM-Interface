@@ -103,7 +103,6 @@ def main(page: ft.Page):
                         bgcolor=ft.colors.BLUE_GREY_900,
                         center_title=True,
                         actions=[
-                            ft.TextButton(text="Register", on_click=lambda _: page.go("/contact")),
                             ft.TextButton(text="About", on_click=lambda _: page.go("/terms")),
                             ft.TextButton(text="Start", on_click=lambda _: page.go("/start")),
                         ]
@@ -126,6 +125,21 @@ def main(page: ft.Page):
                                                 size=24,
                                                 weight=ft.FontWeight.NORMAL
                                             )
+                                        ),
+                                        ft.Row(
+                                            [
+                                                ft.TextButton(
+                                                    "Register",
+                                                    on_click=lambda _: page.go("/register")
+                                                ),
+                                                ft.Text("|"),
+                                                ft.TextButton(
+                                                    "Log in",
+                                                    on_click=lambda _: page.go("/login")
+                                                )
+                                            ],
+                                            alignment=ft.MainAxisAlignment.CENTER,
+                                            spacing=10
                                         ),
                                         ft.Container(
                                             content=ft.GestureDetector(
@@ -244,6 +258,114 @@ def main(page: ft.Page):
                             alignment=ft.alignment.center,
                             padding=20
                         ),
+                    ]
+                )
+            )
+        elif page.route == "/register":
+            page.views.append(
+                ft.View(
+                    "/register",
+                    [
+                        ft.AppBar(
+                            title=ft.Text("Register"),
+                            bgcolor=ft.colors.BLUE_GREY_900,
+                            leading=ft.IconButton(
+                                icon=ft.icons.ARROW_BACK,
+                                on_click=lambda _: page.go("/")
+                            )
+                        ),
+                        ft.Container(
+                            content=ft.Column(
+                                [
+                                    ft.Text(
+                                        "Create an Account",
+                                        style=ft.TextStyle(
+                                            size=32,
+                                            weight=ft.FontWeight.BOLD
+                                        )
+                                    ),
+                                    ft.TextField(
+                                        label="Username",
+                                        width=300
+                                    ),
+                                    ft.TextField(
+                                        label="Email",
+                                        width=300
+                                    ),
+                                    ft.TextField(
+                                        label="Password",
+                                        password=True,
+                                        can_reveal_password=True,
+                                        width=300
+                                    ),
+                                    ft.TextField(
+                                        label="Confirm Password",
+                                        password=True,
+                                        can_reveal_password=True,
+                                        width=300
+                                    ),
+                                    ft.ElevatedButton(
+                                        text="Register",
+                                        on_click=lambda _: page.go("/start")
+                                    )
+                                ],
+                                alignment=ft.MainAxisAlignment.START,
+                                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                                spacing=20,
+                                expand = True
+                            ),
+                            alignment=ft.alignment.top_center,
+                            expand=True
+                        )
+                    ]
+                )
+            )
+        elif page.route == "/login":
+            page.views.append(
+                ft.View(
+                    "/login",
+                    [
+                        ft.AppBar(
+                            title=ft.Text("Log in"),
+                            bgcolor=ft.colors.BLUE_GREY_900,
+                            leading=ft.IconButton(
+                                icon=ft.icons.ARROW_BACK,
+                                on_click=lambda _: page.go("/")
+                            )
+                        ),
+                        ft.Container(
+                            content=ft.Column(
+                                [
+                                    ft.Text(
+                                        "Log in to Your Account",
+                                        style=ft.TextStyle(
+                                            size=32,
+                                            weight=ft.FontWeight.BOLD
+                                        )
+                                    ),
+                                    ft.TextField(
+                                        label="Email",
+                                        width=300
+                                    ),
+                                    ft.TextField(
+                                        label="Password",
+                                        password=True,
+                                        can_reveal_password=True,
+                                        width=300
+                                    ),
+                                    ft.ElevatedButton(
+                                        text="Log in",
+                                        on_click=lambda _: page.go("/dashboard")
+                                    )
+                                ],
+                                alignment=ft.MainAxisAlignment.START,
+                                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                                spacing=20,
+                                expand=True
+                            ),
+                            alignment=ft.alignment.top_center,
+                            expand=True
+                        )
                     ]
                 )
             )
@@ -387,3 +509,22 @@ def main(page: ft.Page):
     page.go(page.route)
 
 ft.app(target=main, view=ft.AppView.FLET_APP)
+
+
+
+
+###
+# Create a form that allows users to essentially enter the data that would be in the CSV files
+# Create a form that allows users to enter the weights for each column
+
+##e.g.
+#Number of criteria: 
+#Number of agents: 
+#Number of decision makers
+
+# Dynamically creates two datatables based on inputted data
+# User can then enter numbers and make adjustments if necessary 
+
+#User can select from their dfs and start program to run the HIVES algorithm
+
+#Portal to view thier weights df and candiadates df
