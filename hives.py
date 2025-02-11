@@ -6,11 +6,29 @@ def hives_algorithm(agents_df, weights_df):
 
     start_time = time.time()
 
-    # Read the agents scores CSV file into a pandas DataFrame
-    agents_df = pd.read_csv(agents_df, index_col=0)
+      # Read the agents scores CSV file into a pandas DataFrame
+    try:
+        agents_df = pd.read_csv(agents_df, index_col=0)
+    except Exception as e:
+        raise ValueError(f"Error reading agents scores file: {e}")
 
     # Read the criteria weights CSV file into a pandas DataFrame
-    weights_df = pd.read_csv(weights_df, index_col=0)
+    try:
+        weights_df = pd.read_csv(weights_df, index_col=0)
+    except Exception as e:
+        raise ValueError(f"Error reading criteria weights file: {e}")
+
+    # Check for missing values in the DataFrames
+    if agents_df.isnull().values.any():
+        raise ValueError("Agents scores file contains missing values.")
+    if weights_df.isnull().values.any():
+        raise ValueError("Criteria weights file contains missing values.")
+
+    # Check for missing headers
+    if agents_df.columns.isnull().any() or agents_df.index.isnull().any():
+        raise ValueError("Agents scores file is missing headers.")
+    if weights_df.columns.isnull().any() or weights_df.index.isnull().any():
+        raise ValueError("Criteria weights file is missing headers.")
 
     # Calculate the first quartile (Q1), third quartile (Q3), Min, and Max for each criterion
     Q1 = weights_df.quantile(0.25)
@@ -136,6 +154,9 @@ def hives_algorithm(agents_df, weights_df):
     # Calculate the final scores for each candidate
     final_scores_df = final_candidates_scores(criteria_weights, agents_df)
 
+    final_scores_df = final_scores_df.reset_index().rename(columns={"index": "Candidates"})
+
+
     print(final_scores_df)
 
     print("--- %s seconds ---" % (time.time() - start_time))
@@ -144,3 +165,4 @@ def hives_algorithm(agents_df, weights_df):
     return final_scores_df
 
 
+hives_algorithm('candidates_scores.csv', 'criteria_weights.csv')
