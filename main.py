@@ -9,6 +9,77 @@ from parallel_coordinate import parallel_coordinates_plot
 from flet.plotly_chart import PlotlyChart
 import plotly.express as px
 import random
+from firebase_functions import login, register
+
+def build_login_page(page: ft.Page):
+    email_field = ft.TextField(label="Email", width=300)
+    password_field = ft.TextField(label="Password", password=True, can_reveal_password=True, width=300)
+    
+    def on_login_click(e):
+        # Call the firebase login function (Pyrebase based)
+        login(page, email_field.value, password_field.value)
+    
+    return ft.View(
+        "/login",
+        [
+            ft.AppBar(
+                title=ft.Text("Log in"),
+                bgcolor=ft.colors.BLUE_GREY_900,
+                leading=ft.IconButton(icon=ft.icons.ARROW_BACK, on_click=lambda _: page.go("/"))
+            ),
+            ft.Container(
+                content=ft.Column(
+                    [
+                        ft.Text("Log in to Your Account", style=ft.TextStyle(size=32, weight=ft.FontWeight.BOLD)),
+                        email_field,
+                        password_field,
+                        ft.ElevatedButton(text="Log in", on_click=on_login_click)
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=20,
+                    expand=True
+                ),
+                alignment=ft.alignment.top_center,
+                expand=True
+            )
+        ]
+    )
+
+def build_register_page(page: ft.Page):
+    email_field = ft.TextField(label="Email", width=300)
+    password_field = ft.TextField(label="Password", password=True, can_reveal_password=True, width=300)
+    
+    def on_register_click(e):
+        # Call the firebase register function (Pyrebase based)
+        register(page, email_field.value, password_field.value)
+    
+    return ft.View(
+        "/register",
+        [
+            ft.AppBar(
+                title=ft.Text("Register"),
+                bgcolor=ft.colors.BLUE_GREY_900,
+                leading=ft.IconButton(icon=ft.icons.ARROW_BACK, on_click=lambda _: page.go("/"))
+            ),
+            ft.Container(
+                content=ft.Column(
+                    [
+                        ft.Text("Create an Account", style=ft.TextStyle(size=32, weight=ft.FontWeight.BOLD)),
+                        email_field,
+                        password_field,
+                        ft.ElevatedButton(text="Register", on_click=on_register_click)
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=20,
+                    expand=True
+                ),
+                alignment=ft.alignment.top_center,
+                expand=True
+            )
+        ]
+    )
 
 def main(page: ft.Page):
     page.title = "Routes Example"
@@ -896,113 +967,9 @@ def main(page: ft.Page):
         elif page.route == "/profile":
             page.views.append(create_profile_view())
         elif page.route == "/register":
-            page.views.append(
-                ft.View(
-                    "/register",
-                    [
-                        ft.AppBar(
-                            title=ft.Text("Register"),
-                            bgcolor=ft.colors.BLUE_GREY_900,
-                            leading=ft.IconButton(
-                                icon=ft.icons.ARROW_BACK,
-                                on_click=lambda _: page.go("/")
-                            )
-                        ),
-                        ft.Container(
-                            content=ft.Column(
-                                [
-                                    ft.Text(
-                                        "Create an Account",
-                                        style=ft.TextStyle(
-                                            size=32,
-                                            weight=ft.FontWeight.BOLD
-                                        )
-                                    ),
-                                    ft.TextField(
-                                        label="Username",
-                                        width=300
-                                    ),
-                                    ft.TextField(
-                                        label="Email",
-                                        width=300
-                                    ),
-                                    ft.TextField(
-                                        label="Password",
-                                        password=True,
-                                        can_reveal_password=True,
-                                        width=300
-                                    ),
-                                    ft.TextField(
-                                        label="Confirm Password",
-                                        password=True,
-                                        can_reveal_password=True,
-                                        width=300
-                                    ),
-                                    ft.ElevatedButton(
-                                        text="Register",
-                                        on_click=lambda _: page.go("/start")
-                                    )
-                                ],
-                                alignment=ft.MainAxisAlignment.START,
-                                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                                spacing=20,
-                                expand = True
-                            ),
-                            alignment=ft.alignment.top_center,
-                            expand=True
-                        )
-                    ]
-                )
-            )
+            page.views.append(build_register_page(page))
         elif page.route == "/login":
-            page.views.append(
-                ft.View(
-                    "/login",
-                    [
-                        ft.AppBar(
-                            title=ft.Text("Log in"),
-                            bgcolor=ft.colors.BLUE_GREY_900,
-                            leading=ft.IconButton(
-                                icon=ft.icons.ARROW_BACK,
-                                on_click=lambda _: page.go("/")
-                            )
-                        ),
-                        ft.Container(
-                            content=ft.Column(
-                                [
-                                    ft.Text(
-                                        "Log in to Your Account",
-                                        style=ft.TextStyle(
-                                            size=32,
-                                            weight=ft.FontWeight.BOLD
-                                        )
-                                    ),
-                                    ft.TextField(
-                                        label="Email",
-                                        width=300
-                                    ),
-                                    ft.TextField(
-                                        label="Password",
-                                        password=True,
-                                        can_reveal_password=True,
-                                        width=300
-                                    ),
-                                    ft.ElevatedButton(
-                                        text="Log in",
-                                        on_click=lambda _: page.go("/dashboard")
-                                    )
-                                ],
-                                alignment=ft.MainAxisAlignment.START,
-                                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                                spacing=20,
-                                expand=True
-                            ),
-                            alignment=ft.alignment.top_center,
-                            expand=True
-                        )
-                    ]
-                )
-            )
+            page.views.append(build_login_page(page))
         elif page.route == "/terms":
             page.views.append(
                 ft.View(
