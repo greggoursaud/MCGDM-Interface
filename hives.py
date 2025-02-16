@@ -157,10 +157,10 @@ def hives_algorithm(agents_df, weights_df):
     final_scores_df = final_scores_df.reset_index().rename(columns={"index": "Candidates"})
 
 
-    print(final_scores_df)
+    #print(final_scores_df)
 
-    print("--- %s seconds ---" % (time.time() - start_time))
-    print("done")
+    #print("--- %s seconds ---" % (time.time() - start_time))
+    #print("done")
 
     return final_scores_df
 

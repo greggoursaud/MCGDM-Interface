@@ -47,8 +47,9 @@ def build_login_page(page: ft.Page):
     )
 
 def build_register_page(page: ft.Page):
-    email_field = ft.TextField(label="Email", width=300)
-    password_field = ft.TextField(label="Password", password=True, can_reveal_password=True, width=300)
+    email_field = ft.TextField(label="Email Address", hint_text="Enter your email address", width=300)
+    password_field = ft.TextField(label="Password", hint_text="Enter your password", password=True, can_reveal_password=True, width=300)
+    confirm_password_field = ft.TextField(label="Confirm Password", hint_text="Confirm your password", password=True, can_reveal_password=True, width=300)
     
     def on_register_click(e):
         # Call the firebase register function (Pyrebase based)
@@ -56,35 +57,115 @@ def build_register_page(page: ft.Page):
     
     return ft.View(
         "/register",
-        [
-            ft.AppBar(
-                title=ft.Text("Register"),
-                bgcolor=ft.colors.BLUE_GREY_900,
-                leading=ft.IconButton(icon=ft.icons.ARROW_BACK, on_click=lambda _: page.go("/"))
-            ),
+        controls=[
+            # Navigation Bar with Back Arrow
             ft.Container(
+                bgcolor="#EAEAEA",  # Light gray navbar
+                padding=ft.padding.symmetric(vertical=15, horizontal=15),
+                content=ft.Row(
+                    [
+                        ft.IconButton(
+                            icon=ft.icons.ARROW_BACK,
+                            on_click=lambda _: page.go("/")
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.START,
+                    spacing=15
+                )
+            ),
+
+            # Hero Section (Main Content)
+            ft.Container(
+                expand=True,
+                bgcolor="#2C2C2C",
+                alignment=ft.alignment.center,
                 content=ft.Column(
                     [
-                        ft.Text("Create an Account", style=ft.TextStyle(size=32, weight=ft.FontWeight.BOLD)),
-                        email_field,
-                        password_field,
-                        ft.ElevatedButton(text="Register", on_click=on_register_click)
+                        # Registration Form Header
+                        ft.Text(
+                            "Register",  # Title of the register form
+                            style=ft.TextStyle(
+                                size=48,
+                                weight=ft.FontWeight.BOLD,
+                                color="white",
+                            ),
+                        ),
+                        ft.Text(
+                            "Create your account to get started.",
+                            style=ft.TextStyle(size=18, color="white"),
+                        ),
+                        
+                        # Registration Form Container
+                        ft.Container(
+                            width=400,  # Adjust width of the form container
+                            padding=ft.padding.all(20),
+                            bgcolor="white",
+                            border_radius=10,
+                            content=ft.Column(
+                                [
+                                    ft.TextField(
+                                        label="Full Name", 
+                                        hint_text="Enter your full name", 
+                                        autofocus=True
+                                    ),
+                                    email_field,
+                                    password_field,
+                                    confirm_password_field,
+                                    ft.Container(
+                                        content=ft.ElevatedButton(
+                                            "Register", 
+                                            bgcolor="#2C2C2C", 
+                                            color="white",
+                                            style=ft.ButtonStyle(
+                                                padding=ft.padding.symmetric(vertical=15, horizontal=30),
+                                                text_style=ft.TextStyle(size=16)
+                                            ),
+                                            on_click=on_register_click  # Call the register function
+                                        ),
+                                        alignment=ft.alignment.center
+                                    ),
+                                    ft.Row(
+                                        [
+                                            ft.Text("Already have an account? "),
+                                            ft.TextButton(
+                                                "Log in",
+                                                on_click=lambda _: page.go("/login"),
+                                                style=ft.ButtonStyle(
+                                                    text_style=ft.TextStyle(color=ft.colors.BLUE)
+                                                )
+                                            )
+                                        ],
+                                        alignment=ft.MainAxisAlignment.CENTER,
+                                        spacing=5
+                                    )
+                                ],
+                                alignment=ft.MainAxisAlignment.START,
+                                spacing=15
+                            )
+                        ),
                     ],
                     alignment=ft.MainAxisAlignment.CENTER,
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    spacing=20,
-                    expand=True
-                ),
-                alignment=ft.alignment.top_center,
-                expand=True
+                    spacing=30
+                )
             )
         ]
     )
 
+
 def main(page: ft.Page):
-    page.title = "Routes Example"
-    page.theme_mode = ft.ThemeMode.DARK
-    page.theme = ft.Theme(font_family="Roboto", use_material3=True)
+
+    page.title = "Weigh In"
+    page.theme = ft.Theme(
+        font_family="Montserrat",
+        color_scheme=ft.ColorScheme(
+            primary="#2C2C2C",
+            background="#2C2C2C",
+            surface="#2C2C2C",
+            on_primary="#FFFFFF",
+            on_background="#FFFFFF"
+        )
+    )
 
     uploaded_file_name_1 = ft.Ref[ft.Text]()
     uploaded_file_name_2 = ft.Ref[ft.Text]()
@@ -688,94 +769,180 @@ def main(page: ft.Page):
         page.views.append(
             ft.View(
                 "/",
-                [
-                    ft.AppBar(
-                        bgcolor=ft.colors.BLUE_GREY_900,
-                        center_title=True,
-                        actions=[
-                            ft.TextButton(text="About", on_click=lambda _: page.go("/terms")),
-                            ft.TextButton(text="Start", on_click=lambda _: page.go("/start")),
-                            ft.TextButton(text="Profile", on_click=lambda _: page.go("/profile")),
-                        ]
-                    ),
+                controls=[
+                    # Navigation Bar
                     ft.Container(
+                        bgcolor="#EAEAEA",  # Light gray navbar
+                        padding=ft.padding.symmetric(vertical=15, horizontal=40),
+                        content=ft.Row(
+                            [
+                                ft.Text("Resources"),
+                                ft.Text("About"),
+                                ft.Text("Contact"),
+                                ft.ElevatedButton("Sign in", bgcolor="#2C2C2C", color="white", on_click=lambda _: page.go("/login")),
+                                ft.ElevatedButton("Register", bgcolor="white", color="black", on_click=lambda _: page.go("/register")),
+                            ],
+                            alignment=ft.MainAxisAlignment.END,
+                            spacing=15
+                        )
+                    ),
+
+                    # Hero Section (Main Content)
+                    ft.Container(
+                        expand=True,
+                        bgcolor="#2C2C2C",
+                        alignment=ft.alignment.center,
                         content=ft.Column(
                             [
-                                ft.Column(
+                                ft.Row(
                                     [
                                         ft.Text(
-                                            "Weigh In",
+                                            "Weigh",  # Non-italicized part
                                             style=ft.TextStyle(
-                                                size=32,
-                                                weight=ft.FontWeight.BOLD
-                                            )
+                                                size=48,
+                                                weight=ft.FontWeight.BOLD,
+                                                color="white",
+                                            ),
                                         ),
                                         ft.Text(
-                                            "Simplify Group Decisions with Confidence.",
+                                            "IN",  # Italicized part
                                             style=ft.TextStyle(
-                                                size=24,
-                                                weight=ft.FontWeight.NORMAL
-                                            )
-                                        ),
-                                        ft.Row(
-                                            [
-                                                ft.TextButton(
-                                                    "Register",
-                                                    on_click=lambda _: page.go("/register")
-                                                ),
-                                                ft.Text("|"),
-                                                ft.TextButton(
-                                                    "Log in",
-                                                    on_click=lambda _: page.go("/login")
-                                                )
-                                            ],
-                                            alignment=ft.MainAxisAlignment.CENTER,
-                                            spacing=10
-                                        ),
-                                        ft.Container(
-                                            content=ft.GestureDetector(
-                                                content=ft.Card(
-                                                    content=ft.Container(
-                                                        content=ft.Text("Get Started", style=ft.TextStyle(size=24)),
-                                                        alignment=ft.alignment.center,
-                                                        padding=20
-                                                    ),
-                                                    width=200,
-                                                    height=200
-                                                ),
-                                                on_tap=lambda _: page.go("/start")
+                                                size=48,
+                                                weight=ft.FontWeight.BOLD,
+                                                italic=True,  # Italic applied only to "IN"
+                                                color="white",
                                             ),
-                                            alignment=ft.alignment.center,
-                                            padding=20
                                         ),
                                     ],
                                     alignment=ft.MainAxisAlignment.CENTER,
-                                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                                    spacing=20
                                 ),
-                                ft.Container(
-                                    content=ft.Row(
-                                        [
-                                            ft.TextButton("Terms and Conditions", on_click=lambda _: page.go("/terms")),
-                                            ft.TextButton("Contact", on_click=lambda _: page.go("/contact"))
-                                        ],
-                                        alignment=ft.MainAxisAlignment.CENTER
-                                    ),
-                                    alignment=ft.alignment.center,
-                                    padding=20
+                                ft.Text(
+                                    "Simplify group decisions with confidence.",
+                                    style=ft.TextStyle(size=24, color="white"),  # Increased size for visibility
+                                ),
+                                ft.Row(
+                                    [
+                                        ft.ElevatedButton(
+                                            "Get Started", 
+                                            bgcolor="white", 
+                                            color="black",
+                                            style=ft.ButtonStyle(
+                                                padding=ft.padding.symmetric(vertical=15, horizontal=30),  # Larger button
+                                                text_style=ft.TextStyle(size=16)  # Larger text
+                                            ),
+                                            on_click=lambda _: page.go("/start")
+                                        ),
+                                        ft.ElevatedButton(
+                                            "Introduction", 
+                                            bgcolor="white", 
+                                            color="black",
+                                            style=ft.ButtonStyle(
+                                                padding=ft.padding.symmetric(vertical=15, horizontal=30),  # Larger button
+                                                text_style=ft.TextStyle(size=16)  # Larger text
+                                            )
+                                        ),
+                                    ],
+                                    alignment=ft.MainAxisAlignment.CENTER,
+                                    spacing=20
                                 )
                             ],
-                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                            alignment=ft.MainAxisAlignment.CENTER,
                             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                            expand=True
-                        ),
-                        alignment=ft.alignment.center,
-                        padding=20,
-                        expand=True
-                    ),
+                            spacing=20  # Increased spacing to move subtext closer to the title
+                        )
+                    )
                 ]
             )
         )
+
+        #         [
+        #             ft.AppBar(
+        #                 bgcolor=ft.colors.BLUE_GREY_900,
+        #                 center_title=True,
+        #                 actions=[
+        #                     ft.TextButton(text="About", on_click=lambda _: page.go("/terms")),
+        #                     ft.TextButton(text="Start", on_click=lambda _: page.go("/start")),
+        #                     ft.TextButton(text="Profile", on_click=lambda _: page.go("/profile")),
+        #                 ]
+        #             ),
+        #             ft.Container(
+        #                 content=ft.Column(
+        #                     [
+        #                         ft.Column(
+        #                             [
+        #                                 ft.Text(
+        #                                     "Weigh In",
+        #                                     style=ft.TextStyle(
+        #                                         size=32,
+        #                                         weight=ft.FontWeight.BOLD
+        #                                     )
+        #                                 ),
+        #                                 ft.Text(
+        #                                     "Simplify Group Decisions with Confidence.",
+        #                                     style=ft.TextStyle(
+        #                                         size=24,
+        #                                         weight=ft.FontWeight.NORMAL
+        #                                     )
+        #                                 ),
+        #                                 ft.Row(
+        #                                     [
+        #                                         ft.TextButton(
+        #                                             "Register",
+        #                                             on_click=lambda _: page.go("/register")
+        #                                         ),
+        #                                         ft.Text("|"),
+        #                                         ft.TextButton(
+        #                                             "Log in",
+        #                                             on_click=lambda _: page.go("/login")
+        #                                         )
+        #                                     ],
+        #                                     alignment=ft.MainAxisAlignment.CENTER,
+        #                                     spacing=10
+        #                                 ),
+        #                                 ft.Container(
+        #                                     content=ft.GestureDetector(
+        #                                         content=ft.Card(
+        #                                             content=ft.Container(
+        #                                                 content=ft.Text("Get Started", style=ft.TextStyle(size=24)),
+        #                                                 alignment=ft.alignment.center,
+        #                                                 padding=20
+        #                                             ),
+        #                                             width=200,
+        #                                             height=200
+        #                                         ),
+        #                                         on_tap=lambda _: page.go("/start")
+        #                                     ),
+        #                                     alignment=ft.alignment.center,
+        #                                     padding=20
+        #                                 ),
+        #                             ],
+        #                             alignment=ft.MainAxisAlignment.CENTER,
+        #                             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        #                             spacing=20
+        #                         ),
+        #                         ft.Container(
+        #                             content=ft.Row(
+        #                                 [
+        #                                     ft.TextButton("Terms and Conditions", on_click=lambda _: page.go("/terms")),
+        #                                     ft.TextButton("Contact", on_click=lambda _: page.go("/contact"))
+        #                                 ],
+        #                                 alignment=ft.MainAxisAlignment.CENTER
+        #                             ),
+        #                             alignment=ft.alignment.center,
+        #                             padding=20
+        #                         )
+        #                     ],
+        #                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+        #                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        #                     expand=True
+        #                 ),
+        #                 alignment=ft.alignment.center,
+        #                 padding=20,
+        #                 expand=True
+        #             ),
+        #         ]
+        #     )
+        # )
         if page.route == "/start":
             page.views.append(
                 ft.View(
