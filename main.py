@@ -1,4 +1,5 @@
 import flet as ft
+import pandas as pd
 
 # Import page components
 from home_page import build_home_page
@@ -9,6 +10,9 @@ from upload_page import build_upload_page
 from input_page import build_input_page
 from start_page import build_start_page
 from terms_page import build_terms_page
+from introduction_page import build_introduction_page
+from dashboard_page import build_dashboard_page
+from parallel_coordinate import parallel_coordinates_plot
 
 def main(page: ft.Page):
     page.title = "Weigh In"
@@ -34,6 +38,11 @@ def main(page: ft.Page):
         elif page.route == "/start":
             page.views.append(build_home_page(page))
             page.views.append(build_start_page(page))
+            
+        # Introduction page
+        elif page.route == "/introduction":
+            page.views.append(build_home_page(page))
+            page.views.append(build_introduction_page(page))
             
         # Upload CSV files page
         elif page.route == "/upload":
@@ -102,6 +111,40 @@ def main(page: ft.Page):
                     ]
                 )
             )
+            
+        # Dashboard page
+        elif page.route == "/dashboard":
+            # Get data from client storage
+            dashboard_data = page.client_storage.get("dashboard_data")
+            
+            if dashboard_data:
+                # Convert dictionary records back to dataframes
+                results_df = pd.DataFrame(dashboard_data["results"])
+                alt_df = pd.DataFrame(dashboard_data["alternatives"])
+                weight_df = pd.DataFrame(dashboard_data["weights"])
+                
+                # Generate plot if needed
+                plot_fig = None
+                if dashboard_data.get("has_plot"):
+                    try:
+                        plot_fig = parallel_coordinates_plot(results_df)
+                    except:
+                        pass
+                
+                # Create the complete data package
+                page_data = {
+                    "results": results_df,
+                    "plot": plot_fig,
+                    "alternatives": alt_df, 
+                    "weights": weight_df
+                }
+                
+                # Build the dashboard page with the data
+                page.views.append(build_dashboard_page(page, page_data))
+            else:
+                # No data available
+                page.views.append(build_dashboard_page(page))
+                
         page.update()
 
     def view_pop(view):

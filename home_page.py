@@ -73,7 +73,8 @@ def build_home_page(page: ft.Page):
                                     style=ft.ButtonStyle(
                                         padding=ft.padding.symmetric(vertical=15, horizontal=30),  # Larger button
                                         text_style=ft.TextStyle(size=16)  # Larger text
-                                    )
+                                    ),
+                                    on_click=lambda _: page.go("/introduction")
                                 ),
                             ],
                             alignment=ft.MainAxisAlignment.CENTER,

@@ -3,8 +3,7 @@ import pandas as pd
 import csv
 from hives import hives_algorithm
 from parallel_coordinate import parallel_coordinates_plot
-from flet.plotly_chart import PlotlyChart
-import plotly.express as px
+from dashboard_page import build_dashboard_page
 
 def build_upload_page(page: ft.Page):
     uploaded_file_name_1 = ft.Ref[ft.Text]()
@@ -37,165 +36,41 @@ def build_upload_page(page: ft.Page):
     def start_program(e): 
         nonlocal csv_file_1, csv_file_2
         if csv_file_1 and csv_file_2:
-            print(f"Starting program with {csv_file_1} and {csv_file_2}")
-
-            # Read CSV files
-            data_1 = read_csv(csv_file_1.path)  
-            data_2 = read_csv(csv_file_2.path)  
-
-            results = hives_algorithm(csv_file_1.path, csv_file_2.path) 
-
-            # Generate the parallel coordinates plot
-            fig = parallel_coordinates_plot(results)  
-            plot_chart = PlotlyChart(fig, expand=False)
-
-            # Create the bar chart with a modern, clean template.
-            fig_bar = px.bar(
-                results, 
-                x="Candidates", 
-                y="Total Score",
-                title="<b>Candidates vs Total Scores</b>",
-                labels={"Candidates": "Candidate", "Total Score": "Total Score"},
+            try:
+                # Read CSV files
+                alt_df = pd.read_csv(csv_file_1.path)  
+                weight_df = pd.read_csv(csv_file_2.path) 
                 
-               # Differentiate candidates by color
-            )
-
-            
-            fig_bar.update_traces(
-                marker=dict(
-                    line=dict(width=2.5, color='rgba(0,0,0,0.3)')  # Subtle border around each bar
-                )
-            )
-
-            # Update layout settings to refine the overall look.
-            fig_bar.update_layout(
-                title_font=dict(
-                    family="Roboto",
-                    size=24,
-                    color="white"
-                ),
-                font=dict(
-                    family="Roboto",
-                    size=14,
-                    color="white"
-                ),
-                xaxis=dict(
-                    tickangle=-45,  # Slight tilt for readability
-                    showgrid=False, # Remove vertical grid lines
-                    zeroline=False,
-                    linecolor='rgba(0,0,0,0.1)',  # Light vertical line for reference
-                    linewidth = 2
-                ),
-                yaxis=dict(
-                    gridcolor='rgba(0,0,0,0.1)',  # Light horizontal grid lines for reference
-                    zeroline=False
-                ),
-                margin=dict(l=50, r=50, t=70, b=70),
-                template='ggplot2',
-                paper_bgcolor='grey',  # Background color of the entire figure
-                plot_bgcolor='lightgrey'
-            )
-
-            bar_chart = PlotlyChart(fig_bar, expand=False)
-
-            # Create data tables
-            def create_data_table(data):
-                if isinstance(data, pd.DataFrame):
-                    headers = data.columns.tolist()
-                    rows = data.values.tolist()
-                else:
-                    headers = data[0]
-                    rows = data[1:]
-
-                columns = [ft.DataColumn(ft.Text(header)) for header in headers]
-                data_rows = [ft.DataRow(cells=[ft.DataCell(ft.Text(str(cell))) for cell in row]) for row in rows]
-                return ft.DataTable(columns=columns, rows=data_rows)
-
-            data_table_1 = create_data_table(data_1)
-            data_table_2 = create_data_table(data_2)
-            data_table_3 = create_data_table(results)
-            data_table_4 = plot_chart
-
-            data_container = ft.Container(
-                content=ft.Column( 
-                    controls=[data_table_3],  
-                    scroll=ft.ScrollMode.AUTO,
-                ),
-                alignment=ft.alignment.center,
-                expand=True,
-            )
-
-            def update_table(e, new_control):
-                if isinstance(new_control, PlotlyChart):
-                    updated_content = ft.Container(
-                        content=new_control,
-                        width=1400,
-                        height=600,
-                        alignment=ft.alignment.center,
-                        expand=True
-                    )
-                else:
-                    updated_content = ft.Column(
-                        controls=[new_control],
-                        scroll=ft.ScrollMode.AUTO,
-                    )
-                data_container.content = updated_content
-                data_container.update()
-
-            # Sidebar menu container
-            menu = ft.Container(
-                content=ft.Column(
-                    [
-                        ft.ListTile(
-                            title=ft.Text("Data 1"),
-                            on_click=lambda e: update_table(e, data_table_1),
-                        ),
-                        ft.ListTile(
-                            title=ft.Text("Data 2"),
-                            on_click=lambda e: update_table(e, data_table_2),
-                        ),
-                        ft.ListTile(
-                            title=ft.Text("Results"),
-                            on_click=lambda e: update_table(e, data_table_3),
-                        ),
-                        ft.ListTile(
-                            title=ft.Text("Parallel Coordinates Plot"),
-                            on_click=lambda e: update_table(e, data_table_4),
-                        ),
-                        ft.ListTile(
-                            title=ft.Text("Bar Chart"),
-                            on_click=lambda e: update_table(e, bar_chart),
-                        ),
-                    ]
-                ),
-                width=200,
-                height=300,
-                bgcolor=ft.colors.SURFACE_VARIANT,
-                border_radius=5,
-            )
-
-            # Wrap in Stack to allow absolute positioning
-            layout = ft.Stack(
-                [
-                    ft.Container(menu, left=10, top=10),  # Menu positioned inside Stack
-                    ft.Container(data_container, left=220, top=10, expand=False),  # Table positioned next to menu
-                ]
-            )
-
-            # Retrieve the current view
-            current_view = page.views[-1]
-
-            # Add layout to current view
-            current_view.controls.append(layout)
-
-            page.update()
-
-            page.snack_bar = ft.SnackBar(ft.Text(f"Program completed with {csv_file_1.name} and {csv_file_2.name}"))
+                print("CSV data loaded successfully")
+                
+                # Process with HIVES algorithm
+                results = hives_algorithm(csv_file_1.path, csv_file_2.path) 
+                
+                # Save data to client storage
+                dashboard_data = {
+                    "results": results.to_dict('records'),
+                    "alternatives": alt_df.to_dict('records'),
+                    "weights": weight_df.to_dict('records'),
+                    "has_plot": True  # Flag to indicate parallel plot should be generated
+                }
+                
+                # Store in client storage for main.py to use
+                page.client_storage.set("dashboard_data", dashboard_data)
+                
+                # Navigate to dashboard page
+                page.go("/dashboard")
+                
+            except Exception as e:
+                import traceback
+                error_message = f"Error processing data: {str(e)}\n{traceback.format_exc()}"
+                print(error_message)  # Print to console for debugging
+                page.snack_bar = ft.SnackBar(ft.Text(f"Error processing data: {str(e)}"))
+                page.snack_bar.open = True
+                page.update()
         else:
             page.snack_bar = ft.SnackBar(ft.Text("Please upload both CSV files."))
-
-        page.snack_bar.open = True
-        page.update()
+            page.snack_bar.open = True
+            page.update()
 
     file_picker_1 = ft.FilePicker(on_result=lambda e: on_file_picked(e, 1))
     file_picker_2 = ft.FilePicker(on_result=lambda e: on_file_picked(e, 2))
@@ -204,21 +79,71 @@ def build_upload_page(page: ft.Page):
     return ft.View(
         "/upload",
         [
-            ft.AppBar(
-                bgcolor=ft.colors.BLUE_GREY_900,
-                leading=ft.IconButton(
-                    icon=ft.icons.ARROW_BACK,
-                    on_click=lambda _: page.go("/start")
+            # Navigation Bar with back arrow like in register_page
+            ft.Container(
+                bgcolor="#EAEAEA",
+                padding=ft.padding.symmetric(vertical=15, horizontal=15),
+                content=ft.Row(
+                    [
+                        ft.IconButton(
+                            icon=ft.icons.ARROW_BACK,
+                            on_click=lambda _: page.go("/start"),
+                            tooltip="Back to Start"
+                        ),
+                        ft.IconButton(
+                            icon=ft.icons.HOME,
+                            on_click=lambda _: page.go("/"),
+                            tooltip="Go to Home"
+                        ),
+                        # Using Container with expand=True instead of Spacer
+                        ft.Container(expand=True),
+                        ft.ElevatedButton("Sign in", bgcolor="#2C2C2C", color="white", on_click=lambda _: page.go("/login")),
+                        ft.ElevatedButton("Register", bgcolor="white", color="black", on_click=lambda _: page.go("/register")),
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                    spacing=15
                 )
             ),
             ft.Container(
                 content=ft.Column(
                     [
+                        # Header with app title
+                        ft.Row(
+                            [
+                                ft.Text(
+                                    "Weigh",
+                                    style=ft.TextStyle(
+                                        size=32,
+                                        weight=ft.FontWeight.BOLD,
+                                        color="white",
+                                    ),
+                                ),
+                                ft.Text(
+                                    "IN",
+                                    style=ft.TextStyle(
+                                        size=32,
+                                        weight=ft.FontWeight.BOLD,
+                                        italic=True,
+                                        color="white",
+                                    ),
+                                ),
+                                ft.Text(
+                                    " - Upload Data",  # Page title addition
+                                    style=ft.TextStyle(
+                                        size=32,
+                                        weight=ft.FontWeight.NORMAL,
+                                        color="white",
+                                    ),
+                                ),
+                            ],
+                            alignment=ft.MainAxisAlignment.CENTER,
+                        ),
                         ft.Text(
                             "Upload CSV Files",
                             style=ft.TextStyle(
-                                size=32,
-                                weight=ft.FontWeight.BOLD
+                                size=24,
+                                weight=ft.FontWeight.BOLD,
+                                color="white"
                             )
                         ),
                         ft.Container(
@@ -227,24 +152,26 @@ def build_upload_page(page: ft.Page):
                                     ft.GestureDetector(
                                         content=ft.Card(
                                             content=ft.Container(
-                                                content=ft.Text("Upload CSV 1", ref=uploaded_file_name_1, style=ft.TextStyle(size=24)),
+                                                content=ft.Text("Upload Alternatives CSV", ref=uploaded_file_name_1, style=ft.TextStyle(size=18, color="white")),
                                                 alignment=ft.alignment.center,
-                                                padding=20
+                                                padding=20,
+                                                bgcolor="#333333"
                                             ),
-                                            width=200,
-                                            height=200
+                                            width=220,
+                                            height=150
                                         ),
                                         on_tap=lambda _: file_picker_1.pick_files(allowed_extensions=["csv"])
                                     ),
                                     ft.GestureDetector(
                                         content=ft.Card(
                                             content=ft.Container(
-                                                content=ft.Text("Upload CSV 2", ref=uploaded_file_name_2, style=ft.TextStyle(size=24)),
+                                                content=ft.Text("Upload Weights CSV", ref=uploaded_file_name_2, style=ft.TextStyle(size=18, color="white")),
                                                 alignment=ft.alignment.center,
-                                                padding=20
+                                                padding=20,
+                                                bgcolor="#333333"
                                             ),
-                                            width=200,
-                                            height=200
+                                            width=220,
+                                            height=150
                                         ),
                                         on_tap=lambda _: file_picker_2.pick_files(allowed_extensions=["csv"])
                                     )
@@ -255,10 +182,17 @@ def build_upload_page(page: ft.Page):
                             alignment=ft.alignment.center,
                             padding=20
                         ),
+                        ft.Text(
+                            "Upload the alternatives data and criteria weights as CSV files.",
+                            style=ft.TextStyle(size=14, color="white")
+                        ),
                         ft.ElevatedButton(
-                            text="Start",
+                            text="Process Data",
                             on_click=start_program,
                             style=ft.ButtonStyle(
+                                bgcolor="white",
+                                color="black",
+                                padding=ft.padding.symmetric(vertical=15, horizontal=30),
                                 text_style=ft.TextStyle(size=16)
                             )
                         )
@@ -270,7 +204,9 @@ def build_upload_page(page: ft.Page):
                     expand=True
                 ),
                 alignment=ft.alignment.center,
-                padding=20
+                padding=20,
+                expand=True,
+                bgcolor="#2C2C2C"  # Dark background matching other pages
             ),
         ]
     )
