@@ -2,7 +2,6 @@ import flet as ft
 import pandas as pd
 import csv
 from hives import hives_algorithm
-from parallel_coordinate import parallel_coordinates_plot
 from dashboard_page import build_dashboard_page
 
 def build_upload_page(page: ft.Page):
@@ -79,7 +78,7 @@ def build_upload_page(page: ft.Page):
     return ft.View(
         "/upload",
         [
-            # Navigation Bar with back arrow like in register_page
+        # Navigation Bar with back arrow like in register_page
             ft.Container(
                 bgcolor="#EAEAEA",
                 padding=ft.padding.symmetric(vertical=15, horizontal=15),
@@ -95,10 +94,14 @@ def build_upload_page(page: ft.Page):
                             on_click=lambda _: page.go("/"),
                             tooltip="Go to Home"
                         ),
-                        # Using Container with expand=True instead of Spacer
                         ft.Container(expand=True),
-                        ft.ElevatedButton("Sign in", bgcolor="#2C2C2C", color="white", on_click=lambda _: page.go("/login")),
-                        ft.ElevatedButton("Register", bgcolor="white", color="black", on_click=lambda _: page.go("/register")),
+                        ft.Row(
+                            [
+                                ft.ElevatedButton("Sign in", bgcolor="#2C2C2C", color="white", on_click=lambda _: page.go("/login")),
+                                ft.ElevatedButton("Register", bgcolor="white", color="black", on_click=lambda _: page.go("/register")),
+                            ],
+                            spacing=15
+                        ),
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     spacing=15

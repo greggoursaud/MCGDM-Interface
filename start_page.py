@@ -11,14 +11,18 @@ def build_start_page(page: ft.Page):
                 content=ft.Row(
                     [
                         ft.IconButton(
-                            icon=ft.icons.ARROW_BACK,
+                            icon=ft.icons.HOME,
                             on_click=lambda _: page.go("/"),
-                            tooltip="Back to Home"
+                            tooltip="Go to Home"
                         ),
-                        # Using Container with expand=True instead of Spacer
                         ft.Container(expand=True),
-                        ft.ElevatedButton("Sign in", bgcolor="#2C2C2C", color="white", on_click=lambda _: page.go("/login")),
-                        ft.ElevatedButton("Register", bgcolor="white", color="black", on_click=lambda _: page.go("/register")),
+                        ft.Row(
+                            [
+                                ft.ElevatedButton("Sign in", bgcolor="#2C2C2C", color="white", on_click=lambda _: page.go("/login")),
+                                ft.ElevatedButton("Register", bgcolor="white", color="black", on_click=lambda _: page.go("/register")),
+                            ],
+                            spacing=15
+                        ),
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     spacing=15
@@ -109,6 +113,24 @@ def build_start_page(page: ft.Page):
                                         ),
                                         on_tap=lambda _: page.go("/upload")
                                     ),
+                                    
+                                    # Adding a clear "OR" between the cards
+                                    ft.Container(
+                                        content=ft.Text(
+                                            "OR",
+                                            style=ft.TextStyle(
+                                                size=28,
+                                                weight=ft.FontWeight.BOLD,
+                                                color="white",
+                                            ),
+                                        ),
+                                        alignment=ft.alignment.center,
+                                        width=80,
+                                        height=200,
+                                        border_radius=30,
+                                        bgcolor="#2C2C2C",
+                                    ),
+                                    
                                     ft.GestureDetector(
                                         content=ft.Card(
                                             content=ft.Container(
@@ -147,7 +169,7 @@ def build_start_page(page: ft.Page):
                                     )
                                 ],
                                 alignment=ft.MainAxisAlignment.CENTER,
-                                spacing=30
+                                spacing=10  # Reduced spacing to accommodate the OR container
                             ),
                             alignment=ft.alignment.center,
                             padding=20

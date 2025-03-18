@@ -12,7 +12,7 @@ from start_page import build_start_page
 from terms_page import build_terms_page
 from introduction_page import build_introduction_page
 from dashboard_page import build_dashboard_page
-from parallel_coordinate import parallel_coordinates_plot
+from resources_page import build_resources_page
 
 def main(page: ft.Page):
     page.title = "Weigh In"
@@ -33,6 +33,11 @@ def main(page: ft.Page):
         # Home/landing page
         if page.route == "/" or not page.route:
             page.views.append(build_home_page(page))
+            
+        # Resources page
+        elif page.route == "/resources":
+            page.views.append(build_home_page(page))
+            page.views.append(build_resources_page(page))
             
         # Start page (choose between upload and input)
         elif page.route == "/start":

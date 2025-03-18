@@ -2,7 +2,6 @@ import flet as ft
 import pandas as pd
 import numpy as np
 from hives import hives_algorithm
-from parallel_coordinate import parallel_coordinates_plot
 import random
 import traceback  # Import traceback at the top level of the file
 import tempfile
@@ -371,9 +370,7 @@ def build_input_page(page: ft.Page):
             
             # Run HIVES algorithm
             results = hives_algorithm(alt_csv_path, weight_csv_path)
-            
-            # Generate parallel coordinates plot
-            parallel_plot = parallel_coordinates_plot(results)
+
             
             # Save data to client storage
             dashboard_data = {
@@ -651,7 +648,7 @@ def build_input_page(page: ft.Page):
     return ft.View(
         "/input",
         [
-            # Updated Navigation Bar with back arrow like in register_page
+        # Updated Navigation Bar with back arrow like in register_page
             ft.Container(
                 bgcolor="#EAEAEA",
                 padding=ft.padding.symmetric(vertical=15, horizontal=15),
@@ -667,10 +664,14 @@ def build_input_page(page: ft.Page):
                             on_click=lambda _: page.go("/"),
                             tooltip="Go to Home"
                         ),
-                        # Using Container with expand=True instead of Spacer
                         ft.Container(expand=True),
-                        ft.ElevatedButton("Sign in", bgcolor="#2C2C2C", color="white", on_click=lambda _: page.go("/login")),
-                        ft.ElevatedButton("Register", bgcolor="white", color="black", on_click=lambda _: page.go("/register")),
+                        ft.Row(
+                            [
+                                ft.ElevatedButton("Sign in", bgcolor="#2C2C2C", color="white", on_click=lambda _: page.go("/login")),
+                                ft.ElevatedButton("Register", bgcolor="white", color="black", on_click=lambda _: page.go("/register")),
+                            ],
+                            spacing=15
+                        ),
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     spacing=15

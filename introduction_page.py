@@ -6,17 +6,25 @@ def build_introduction_page(page: ft.Page):
         controls=[
             # Navigation Bar
             ft.Container(
-                bgcolor="#EAEAEA",  # Light gray navbar
-                padding=ft.padding.symmetric(vertical=15, horizontal=40),
+                bgcolor="#EAEAEA",
+                padding=ft.padding.symmetric(vertical=15, horizontal=15),
                 content=ft.Row(
                     [
-                        ft.Text("Resources"),
-                        ft.Text("About"),
-                        ft.Text("Contact"),
-                        ft.ElevatedButton("Sign in", bgcolor="#2C2C2C", color="white", on_click=lambda _: page.go("/login")),
-                        ft.ElevatedButton("Register", bgcolor="white", color="black", on_click=lambda _: page.go("/register")),
+                        ft.IconButton(
+                            icon=ft.icons.HOME,
+                            on_click=lambda _: page.go("/"),
+                            tooltip="Go to Home"
+                        ),
+                        ft.Container(expand=True),
+                        ft.Row(
+                            [
+                                ft.ElevatedButton("Sign in", bgcolor="#2C2C2C", color="white", on_click=lambda _: page.go("/login")),
+                                ft.ElevatedButton("Register", bgcolor="white", color="black", on_click=lambda _: page.go("/register")),
+                            ],
+                            spacing=15
+                        ),
                     ],
-                    alignment=ft.MainAxisAlignment.END,
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     spacing=15
                 )
             ),
@@ -102,16 +110,6 @@ def build_introduction_page(page: ft.Page):
                             margin=ft.margin.only(top=30),
                             content=ft.Row(
                                 [
-                                    ft.ElevatedButton(
-                                        "Back to Home", 
-                                        bgcolor="white", 
-                                        color="black",
-                                        style=ft.ButtonStyle(
-                                            padding=ft.padding.symmetric(vertical=15, horizontal=30),
-                                            text_style=ft.TextStyle(size=16)
-                                        ),
-                                        on_click=lambda _: page.go("/")
-                                    ),
                                     ft.ElevatedButton(
                                         "Get Started", 
                                         bgcolor="white", 

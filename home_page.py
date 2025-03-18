@@ -10,7 +10,7 @@ def build_home_page(page: ft.Page):
                 padding=ft.padding.symmetric(vertical=15, horizontal=40),
                 content=ft.Row(
                     [
-                        ft.Text("Resources"),
+                        ft.TextButton("Resources", on_click=lambda _: page.go("/resources")),
                         ft.Text("About"),
                         ft.Text("Contact"),
                         ft.ElevatedButton("Sign in", bgcolor="#2C2C2C", color="white", on_click=lambda _: page.go("/login")),
@@ -33,7 +33,7 @@ def build_home_page(page: ft.Page):
                                 ft.Text(
                                     "Weigh",  # Non-italicized part
                                     style=ft.TextStyle(
-                                        size=48,
+                                        size=56,
                                         weight=ft.FontWeight.BOLD,
                                         color="white",
                                     ),
@@ -41,7 +41,7 @@ def build_home_page(page: ft.Page):
                                 ft.Text(
                                     "IN",  # Italicized part
                                     style=ft.TextStyle(
-                                        size=48,
+                                        size=56,
                                         weight=ft.FontWeight.BOLD,
                                         italic=True,  # Italic applied only to "IN"
                                         color="white",
@@ -51,8 +51,8 @@ def build_home_page(page: ft.Page):
                             alignment=ft.MainAxisAlignment.CENTER,
                         ),
                         ft.Text(
-                            "Simplify group decisions with confidence.",
-                            style=ft.TextStyle(size=24, color="white"),  # Increased size for visibility
+                            "Simplify multi-criteria group decisions with confidence.",
+                            style=ft.TextStyle(size=30, color="white"),  # Increased size for visibility
                         ),
                         ft.Row(
                             [
@@ -83,7 +83,7 @@ def build_home_page(page: ft.Page):
                     ],
                     alignment=ft.MainAxisAlignment.CENTER,
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    spacing=20  # Increased spacing to move subtext closer to the title
+                    spacing=25  # Increased spacing to move subtext closer to the title
                 )
             )
         ]
