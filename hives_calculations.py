@@ -139,25 +139,41 @@ def calculate_final_scores(corrected_weights, agents_df):
     Returns:
         DataFrame: Final scores and rankings
     """
+    # Input validation
+    if not isinstance(corrected_weights, (list, np.ndarray)) or not isinstance(agents_df, pd.DataFrame):
+        raise TypeError("Invalid input types")
+    
+    if len(corrected_weights) != agents_df.shape[1]:
+        raise ValueError("Number of weights must match number of criteria")
+    
     # Convert the agents DataFrame to a numpy array
     agents_array = agents_df.to_numpy()
     
     # Convert corrected weights to a numpy array
     corrected_weights_array = np.array(corrected_weights)
     
+    # Replace any infinite values with NaN
+    agents_array = np.nan_to_num(agents_array, nan=0.0, posinf=0.0, neginf=0.0)
+    
     # Calculate the weighted scores for each criterion
     weighted_scores = agents_array * corrected_weights_array
     
-    # Calculate the total score for each candidate by summing the weighted scores across the criteria
+    # Calculate the total score for each candidate
     total_scores = np.sum(weighted_scores, axis=1)
     
     # Create a DataFrame with the individual weighted scores
     weighted_scores_df = pd.DataFrame(weighted_scores, index=agents_df.index, columns=agents_df.columns)
     
-    # Add the total scores as a new column to the DataFrame
+    # Add the total scores as a new column
     weighted_scores_df['Total Score'] = total_scores
     
-    # Add the ranking based on the total scores
-    weighted_scores_df['Ranking'] = weighted_scores_df['Total Score'].rank(ascending=False, method='min').astype(int)
+    # Handle ranking with NaN values
+    # Sort by total score (descending) and assign ranks
+    rankings = pd.Series(index=agents_df.index, dtype=float)
+    sorted_indices = np.argsort(-total_scores)  # Negative for descending order
+    for rank, idx in enumerate(sorted_indices, 1):
+        rankings.iloc[idx] = rank
+    
+    weighted_scores_df['Ranking'] = rankings
     
     return weighted_scores_df

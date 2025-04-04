@@ -12,7 +12,7 @@ def build_home_page(page: ft.Page):
                     [
                         ft.TextButton("Resources", on_click=lambda _: page.go("/resources")),
                         ft.Text("About"),
-                        ft.Text("Contact"),
+                        ft.TextButton("Contact", on_click=lambda _: page.go("/contact")),
                         ft.ElevatedButton("Sign in", bgcolor="#2C2C2C", color="white", on_click=lambda _: page.go("/login")),
                         ft.ElevatedButton("Register", bgcolor="white", color="black", on_click=lambda _: page.go("/register")),
                     ],

@@ -3,8 +3,7 @@ import pandas as pd
 
 # Import page components
 from home_page import build_home_page
-from login_page import build_login_page
-from register_page import build_register_page
+from contact_page import build_contact_page
 from profile_page import create_profile_view
 from upload_page import build_upload_page
 from input_page import build_input_page
@@ -66,15 +65,15 @@ def main(page: ft.Page):
             page.views.append(build_home_page(page))
             page.views.append(create_profile_view(page))
             
-        # Registration page
-        elif page.route == "/register":
-            page.views.append(build_home_page(page))
-            page.views.append(build_register_page(page))
+        # # Registration page
+        # elif page.route == "/register":
+        #     page.views.append(build_home_page(page))
+        #     page.views.append(build_register_page(page))
             
-        # Login page
-        elif page.route == "/login":
-            page.views.append(build_home_page(page))
-            page.views.append(build_login_page(page))
+        # # Login page
+        # elif page.route == "/login":
+        #     page.views.append(build_home_page(page))
+        #     page.views.append(build_login_page(page))
             
         # Terms of service page
         elif page.route == "/terms":
@@ -84,38 +83,7 @@ def main(page: ft.Page):
         # Contact page
         elif page.route == "/contact":
             page.views.append(build_home_page(page))
-            page.views.append(
-                ft.View(
-                    "/contact",
-                    [
-                        ft.AppBar(
-                            bgcolor=ft.colors.BLUE_GREY_900,
-                            leading=ft.IconButton(
-                                icon=ft.icons.ARROW_BACK,
-                                on_click=lambda _: page.go("/")
-                            )
-                        ),
-                        ft.Container(
-                            content=ft.Column(
-                                [
-                                    ft.Text(
-                                        "Contact",
-                                        style=ft.TextStyle(
-                                            size=32,
-                                            weight=ft.FontWeight.BOLD
-                                        )
-                                    )
-                                ],
-                                alignment=ft.MainAxisAlignment.CENTER,
-                                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                                spacing=20
-                            ),
-                            alignment=ft.alignment.center,
-                            padding=20
-                        ),
-                    ]
-                )
-            )
+            page.views.append(build_contact_page(page))
             
         # Dashboard page
         elif page.route == "/dashboard":
