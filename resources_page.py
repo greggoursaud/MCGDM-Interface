@@ -3,15 +3,9 @@ import os
 
 def build_resources_page(page: ft.Page):
     # Function to open papers in external viewer
-    def open_local_paper(e, path):
-        try:
-            # Use the os module to open the file with the default application
-            os.startfile(path)
-        except Exception as e:
-            print(f"Error opening file: {e}")
 
     # Create a card for each academic paper
-    def create_paper_card(title, authors, year, description, local_path, external_url=None):
+    def create_paper_card(title, authors, year, description, external_url=None):
         return ft.Card(
             elevation=4,
             color="white",
@@ -54,17 +48,6 @@ def build_resources_page(page: ft.Page):
                         ft.Container(height=20),
                         ft.Row(
                             [
-                                ft.ElevatedButton(
-                                    "Open Local Copy",
-                                    icon=ft.icons.OPEN_IN_NEW,
-                                    bgcolor="white",
-                                    color="black",
-                                    style=ft.ButtonStyle(
-                                        padding=ft.padding.symmetric(vertical=10, horizontal=15),
-                                        text_style=ft.TextStyle(size=14)
-                                    ),
-                                    on_click=lambda e: open_local_paper(e, local_path)
-                                ),
                                 ft.ElevatedButton(
                                     "View Online",
                                     icon=ft.icons.LINK,
@@ -158,23 +141,21 @@ def build_resources_page(page: ft.Page):
                         
                         # Academic papers section
                         create_paper_card(
-                            "HIVES: A Novel Decision-Making Method for Group Multi-Criteria Problems",
-                            "Smith J., Johnson A., et al.",
-                            "2022",
-                            "This paper introduces the HIVES (Hierarchical Integration of Variant Expert Systems) method, which forms the core algorithm behind the WeighIN platform. The method addresses the challenges of integrating multiple decision-makers' preferences across various criteria to arrive at consensus-driven decisions.",
-                            hives_paper_path,
-                            "https://doi.org/10.xxxx/xxxxx" # Placeholder URL
+                            title="HIVES: A Novel Decision-Making Method for Group Multi-Criteria Problems",
+                            authors="Smith J., Johnson A., et al.",
+                            year="2022",
+                            description="This paper introduces the HIVES (Hierarchical Integration of Variant Expert Systems) method, which forms the core algorithm behind the WeighIN platform. The method addresses the challenges of integrating multiple decision-makers' preferences across various criteria to arrive at consensus-driven decisions.",
+                            external_url="https://www.sciencedirect.com/science/article/pii/S0957417422024903"
                         ),
                         
                         ft.Container(height=20),
                         
                         create_paper_card(
-                            "A Systematic Review of Multi-Criteria Group Decision-Making Methods",
-                            "Wong L., Garcia P., et al.",
-                            "2021",
-                            "This comprehensive review examines the landscape of MCGDM methods over the past decade, comparing their effectiveness, computational efficiency, and practical applicability. The review helped identify gaps in existing methods that the HIVES approach addresses.",
-                            systematic_review_path,
-                            "https://doi.org/10.yyyy/yyyyy" # Placeholder URL
+                            title="A Systematic Review of Multi-Criteria Group Decision-Making Methods",
+                            authors="Wong L., Garcia P., et al.",
+                            year="2021",
+                            description="This comprehensive review examines the landscape of MCGDM methods over the past decade, comparing their effectiveness, computational efficiency, and practical applicability. The review helped identify gaps in existing methods that the HIVES approach addresses.",
+                            external_url="https://www.sciencedirect.com/science/article/pii/S0957417422024903"
                         ),
                         
                         ft.Container(height=30),
