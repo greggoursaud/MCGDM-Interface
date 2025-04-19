@@ -3,8 +3,13 @@ import pandas as pd
 import csv
 from hives import hives_algorithm
 from dashboard_page import build_dashboard_page
+from user_utils import get_navigation_controls
 
 def build_upload_page(page: ft.Page):
+    # Get user data and navigation controls
+    user_data = page.client_storage.get("user_data")
+    nav_controls = get_navigation_controls(page, user_data)
+    
     uploaded_file_name_1 = ft.Ref[ft.Text]()
     uploaded_file_name_2 = ft.Ref[ft.Text]()
     csv_file_1 = None
@@ -95,18 +100,20 @@ def build_upload_page(page: ft.Page):
                             tooltip="Go to Home"
                         ),
                         ft.Container(expand=True),
-                        ft.Row(
-                            [
-                                ft.ElevatedButton("Sign in", bgcolor="#2C2C2C", color="white", on_click=lambda _: page.go("/login")),
-                                ft.ElevatedButton("Register", bgcolor="white", color="black", on_click=lambda _: page.go("/register")),
-                            ],
-                            spacing=15
+                        # Use the nav_controls variable instead of hard-coded buttons
+                        nav_controls,
+                        # Add a message for non-logged-in users about saving limitations
+                        ft.Container(
+                            content=ft.Text("Sign in to save results", color="#EA4335", italic=True),
+                            visible=user_data is None,
+                            padding=5,
                         ),
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     spacing=15
                 )
             ),
+            
             ft.Container(
                 content=ft.Column(
                     [

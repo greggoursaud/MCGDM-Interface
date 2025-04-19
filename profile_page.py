@@ -1,399 +1,792 @@
 import flet as ft
-import random
+import pandas as pd
+from datetime import datetime
+from user_utils import get_navigation_controls
+from firebase_functions import load_data
 
-def create_profile_view(page: ft.Page):
-    # Sample data for demonstration
-    agent_data_sets = [
-        {"Name": "Agent Data Set 1", "Criteria": 5, "Alternatives": 10},
-        {"Name": "Agent Data Set 2", "Criteria": 4, "Alternatives": 8},
-    ]
-    weights_data_sets = [
-        {"Name": "Weights Data Set 1", "Criteria": 5, "DMs": 3},
-        {"Name": "Weights Data Set 2", "Criteria": 6, "DMs": 4},
-    ]
+# Update function signature to accept user_id
+def build_profile_page(page: ft.Page, user_id=None):
+    """Build the profile page view. Accepts user_id as parameter."""
+    # Get current user data from page storage (for consistency with other pages)
+    user_data = page.client_storage.get("user_data")
     
-    # Columns to hold the dynamically added rows
-    agent_rows = ft.Column(
-        controls=[
-            *[
-                ft.Row(
-                    controls=[
-                        ft.Text(data['Name']),
-                        ft.Text(str(data['Criteria'])),
-                        ft.Text(str(data['Alternatives'])),
-                        ft.ElevatedButton(
-                            text="View",
-                            on_click=lambda e, name=data['Name']: view_data(name)
-                        )
-                    ],
-                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                    spacing=10
-                )
-                for data in agent_data_sets
-            ]
-        ],
-        spacing=10
-    )
+    # Debug: print user data structure to understand what fields are available
+    print(f"User data: {user_data}")
     
-    weights_rows = ft.Column(
-        controls=[
-            *[
-                ft.Row(
-                    controls=[
-                        ft.Text(data['Name']),
-                        ft.Text(str(data['Criteria'])),
-                        ft.Text(str(data['DMs'])),
-                        ft.ElevatedButton(
-                            text="View",
-                            on_click=lambda e, name=data['Name']: view_data(name)
-                        )
-                    ],
-                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                    spacing=10
-                )
-                for data in weights_data_sets
-            ]
-        ],
-        spacing=10
-    )
+    # Use the user_id parameter if provided, otherwise try to get it from storage
+    if not user_id:
+        user_id = page.client_storage.get("user_id")
     
-    def view_data(data_name):
-        # For Agent Data Set 1, show an editable table
-        if data_name == "Agent Data Set 1":
-            headers = ["Alternative", "C1", "C2", "C3", "C4", "C5"]
-            # Build initial sample rows with random numbers between 1 and 100
-            sample_rows = []
-            for i in range(1, 11):
-                row = [f"Alternative {i}"]
-                row.extend([str(random.randint(1, 100)) for _ in range(5)])
-                sample_rows.append(row)
-            
-            # Container that will hold the editable row displays
-            rows_container = ft.Column(spacing=10)
-
-            # A helper function to rebuild the rows_container from sample_rows
-            def refresh_table():
-                rows_container.controls.clear()
-                
-                # Build a row for each sample row, adding an edit button at the end
-                for row in sample_rows:
-                    def edit_row(e, row_value=row):
-                        # Build text fields prefilled with current row data.
-                        # The first cell (Alternative) is noneditable.
-                        edit_fields = [ft.Text(row_value[0])]
-                        for index in range(1, len(row_value)):
-                            edit_fields.append(ft.TextField(label=headers[index], value=row_value[index]))
-                        
-                        # Function to submit the changes to the row.
-                        def submit_edit(e, original=row_value):
-                            new_row = [edit_fields[0].value] + [f.value for f in edit_fields[1:]]
-                            sample_rows[sample_rows.index(original)] = new_row
-                            edit_dialog.open = False
-                            dialog.open = True
-                            refresh_table()
-                            page.update()
-                        
-                        edit_dialog = ft.AlertDialog(
-                            title=ft.Text("Edit Row"),
-                            content=ft.Container(
-                                content=ft.Column(controls=edit_fields, spacing=10),
-                                width=400,   # Square dialog width
-                                height=400,  # Square dialog height
-                                alignment=ft.alignment.center
+    # Store the user_id value securely for use in subfunctions
+    current_user_id = user_id
+    
+    print(f"Profile page built with user_id: {current_user_id}")
+    
+    # Get navigation controls
+    nav_controls = get_navigation_controls(page, user_data)
+    
+    # Load user's saved data
+    saved_data = load_data(page, current_user_id)
+    
+    # If no user is logged in, redirect to login page
+    if not user_data:
+        return ft.View(
+            "/profile",
+            [
+                ft.Container(
+                    content=ft.Column(
+                        [
+                            ft.Container(height=20),
+                            ft.Text("You need to sign in to view your profile", size=20, color="white"),
+                            ft.Container(height=10),
+                            ft.Row(
+                                [
+                                    ft.ElevatedButton(
+                                        "Sign in",
+                                        on_click=lambda _: page.go("/login"),
+                                        style=ft.ButtonStyle(
+                                            bgcolor="#34A853",
+                                            color="white",
+                                            padding=ft.padding.symmetric(vertical=15, horizontal=30),
+                                            text_style=ft.TextStyle(size=16)
+                                        )
+                                    ),
+                                    ft.ElevatedButton(
+                                        "Go to Start",
+                                        on_click=lambda _: page.go("/start"),
+                                        style=ft.ButtonStyle(
+                                            bgcolor="#4285F4",
+                                            color="white",
+                                            padding=ft.padding.symmetric(vertical=15, horizontal=30),
+                                            text_style=ft.TextStyle(size=16)
+                                        )
+                                    )
+                                ],
+                                spacing=10,
+                                alignment=ft.MainAxisAlignment.CENTER
                             ),
-                            actions=[
-                                ft.ElevatedButton(text="Submit", on_click=submit_edit)
-                            ],
-                            actions_alignment=ft.MainAxisAlignment.END,
-                            inset_padding=ft.Padding(top=20, bottom=20, left=24, right=24),
-                            shape=ft.RoundedRectangleBorder(radius=10)
+                            ft.Container(height=10),
+                            ft.Text(
+                                "You can use the app without signing in, but you won't be able to save your sessions.",
+                                size=14, 
+                                color="white70",
+                                text_align=ft.TextAlign.CENTER
+                            )
+                        ],
+                        alignment=ft.MainAxisAlignment.CENTER,
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        expand=True
+                    ),
+                    alignment=ft.alignment.center,
+                    expand=True,
+                    bgcolor="#2C2C2C"
+                )
+            ]
+        )
+    
+    # Get user's display name or email from multiple potential sources
+    email = None
+    
+    # First check if we have email already stored in client storage - most reliable method
+    stored_email = page.client_storage.get("user_email")
+    if stored_email:
+        email = stored_email
+        print(f"Using email from client storage: {email}")
+    
+    # If no stored email, try to extract from current user_data
+    elif user_data:
+        # Try different potential structures
+        if "email" in user_data:
+            email = user_data["email"]
+            # Store it for future use
+            page.client_storage.set("user_email", email)
+            print(f"Found and stored email: {email}")
+        elif "users" in user_data and len(user_data["users"]) > 0:
+            email = user_data["users"][0].get("email")
+            if email:
+                page.client_storage.set("user_email", email)
+                print(f"Found and stored email from users array: {email}")
+    
+    # Use email as display name if no display name is available
+    display_name = user_data.get("displayName", "") or email or "User"
+    
+    print(f"Using display name: {display_name}")
+    
+    # Create a reference for the content area that will change based on selected tab
+    content_ref = ft.Ref[ft.Container]()
+    
+    # Create a dictionary to store loaded data
+    loaded_data = {"saved_sessions": []}
+    
+    # Try to load the user's saved data from Firebase
+    try:
+        # Use the already obtained user_id, don't get it again
+        firebase_data = load_data(page, current_user_id)
+        
+        if firebase_data and "saved_sessions" in firebase_data:
+            loaded_data = firebase_data
+    except Exception as e:
+        # Show error message if loading fails
+        page.snack_bar = ft.SnackBar(ft.Text(f"Error loading saved data: {str(e)}"))
+        page.snack_bar.open = True
+    
+    # Function to create the Sessions tab content
+    def create_sessions_tab():
+        """Create content for the Sessions tab"""
+        
+        # Get saved sessions data
+        saved_sessions = loaded_data.get("saved_sessions", [])
+        
+        if not saved_sessions:
+            return ft.Container(
+                content=ft.Column(
+                    [
+                        ft.Text("No saved sessions found", size=16, color="white"),
+                        ft.Text(
+                            "Your saved sessions will appear here after you save them from the dashboard.",
+                            size=14, color="white70", italic=True
                         )
-                        # Swap dialogs so the edit dialog comes up.
-                        dialog.open = False
-                        page.dialog = edit_dialog
-                        edit_dialog.open = True
-                        page.update()
-                    
-                    row_display = ft.Row(
-                        controls=[ft.Text(cell) for cell in row] + [ft.IconButton(icon=ft.icons.EDIT, on_click=edit_row)],
-                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN
-                    )
-                    rows_container.controls.append(row_display)
-                
-                # Adding a new row.
-                def add_row(e):
-                    # Create text fields for each criteria (skip Alternative)
-                    new_fields = [ft.TextField(label=header) for header in headers[1:]]
-                    def submit_new(e):
-                        new_row = [f"Alternative {len(sample_rows)+1}"] + [field.value for field in new_fields]
-                        sample_rows.append(new_row)
-                        add_dialog.open = False
-                        dialog.open = True
-                        refresh_table()
-                        page.update()
-                    add_dialog = ft.AlertDialog(
-                        title=ft.Text("Add New Row"),
-                        content=ft.Container(
-                            content=ft.Column(controls=new_fields, spacing=10),
-                            width=400,   # Square dialog width
-                            height=400,  # Square dialog height
-                            alignment=ft.alignment.center
-                        ),
-                        actions=[ft.ElevatedButton(text="Submit", on_click=submit_new)],
-                        actions_alignment=ft.MainAxisAlignment.END,
-                        inset_padding=ft.Padding(top=20, bottom=20, left=24, right=24),
-                        shape=ft.RoundedRectangleBorder(radius=10)
-                    )
-                    dialog.open = False
-                    page.dialog = add_dialog
-                    add_dialog.open = True
-                    page.update()
-                
-                rows_container.controls.append(ft.ElevatedButton(text="Add Row", on_click=add_row))
-                page.update()
-
-            # Initially populate the table
-            refresh_table()
-            
-            # Create the main dialog and add the rows_container in a scrollable container.
-            dialog = ft.AlertDialog(
-                title=ft.Text(f"Viewing {data_name} Data (Editable)"),
-                content=ft.Container(
-                    content=rows_container,
-                    width=1200,
-                    height=800,
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 ),
+                bgcolor="#2C2C2C",
+                border_radius=10,
+                padding=20,
+                expand=True,
+                height=400
+            )
+        
+        # Sort sessions by timestamp (newest first)
+        sorted_sessions = sorted(
+            saved_sessions, 
+            key=lambda x: datetime.strptime(x.get("timestamp", "1970-01-01 00:00:00"), "%Y-%m-%d %H:%M:%S"),
+            reverse=True
+        )
+        
+        # Create a card for each saved session
+        session_cards = []
+        
+        for i, session in enumerate(sorted_sessions):
+            # Extract metadata
+            session_name = session.get("session_name", f"Session {i+1}")
+            timestamp = session.get("timestamp", "Unknown date")
+            
+            # Extract data package
+            data_package = session.get("data", {})
+            
+            # Check what types of data are included
+            has_results = "results" in data_package
+            has_alternatives = "alternatives" in data_package
+            has_weights = "weights" in data_package
+            
+            # Function to load this session
+            def create_load_handler(session_data):
+                def load_session(e):
+                    # Before loading this session, clear any existing dashboard data
+                    # to prevent it from being used instead of our loaded session
+                    page.client_storage.remove("dashboard_data")
+                    
+                    # Store the session data in client storage for the dashboard to use
+                    page.client_storage.set("loaded_session", session_data)
+                    
+                    print(f"Loading session: {session.get('session_name', 'Unknown')}")
+                    
+                    # Navigate to the dashboard
+                    page.go("/dashboard")
+                
+                return load_session
+            
+            # Create a card for this session
+            session_card = ft.Card(
+                content=ft.Container(
+                    content=ft.Column([
+                        ft.ListTile(
+                            leading=ft.Icon(ft.icons.ANALYTICS, color="#4285F4"),
+                            title=ft.Text(session_name, size=18, weight=ft.FontWeight.BOLD, color="black"),
+                            subtitle=ft.Text(f"Saved on: {timestamp}", color="black70"),
+                        ),
+                        ft.Divider(color="white24", height=1),
+                        ft.Container(
+                            content=ft.Row([
+                                ft.ElevatedButton(
+                                    "Load Session",
+                                    icon=ft.icons.OPEN_IN_NEW,
+                                    on_click=create_load_handler(data_package),
+                                    style=ft.ButtonStyle(
+                                        bgcolor="#4285F4",
+                                        color="white",
+                                        overlay_color=ft.colors.TRANSPARENT,
+                                        shape=ft.RoundedRectangleBorder(radius=8),
+                                        elevation=3,
+                                        shadow_color="#000000",
+                                    ),
+                                ),
+                                ft.IconButton(
+                                    icon=ft.icons.DELETE,
+                                    tooltip="Delete Session",
+                                    icon_color="#EA4335",
+                                    on_click=lambda e, idx=i: delete_session(e, idx)
+                                )
+                            ], spacing=5, alignment=ft.MainAxisAlignment.END),
+                            padding=ft.padding.only(right=15, bottom=10)
+                        ),
+                    ]),
+                    width=400,
+                    bgcolor="#1C1C1C",
+                    border=ft.border.all(1, "#3C3C3C"),
+                    border_radius=10,
+                ),
+                elevation=3
+            )
+            
+            session_cards.append(session_card)
+        
+        # Function to delete a session
+        def delete_session(e, index):
+            # Create a confirmation dialog
+            def confirm_delete(e):
+                # Remove the session from the list
+                loaded_data["saved_sessions"].pop(index)
+                
+                # Save the updated data to Firebase - use the stored user_id
+                try:
+                    from firebase_functions import save_data
+                    save_data(page, current_user_id, loaded_data)
+                    
+                    # Update the content area with the new list of sessions
+                    content_ref.current.content = create_sessions_tab()
+                    
+                    # Show success message
+                    page.snack_bar = ft.SnackBar(ft.Text("Session deleted successfully"))
+                    page.snack_bar.open = True
+                except Exception as e:
+                    # Show error message if saving fails
+                    page.snack_bar = ft.SnackBar(ft.Text(f"Error deleting session: {str(e)}"))
+                    page.snack_bar.open = True
+                
+                # Close the dialog
+                confirm_dialog.open = False
+                page.update()
+            
+            # Create confirmation dialog
+            confirm_dialog = ft.AlertDialog(
+                modal=True,
+                title=ft.Text("Confirm Deletion"),
+                content=ft.Text("Are you sure you want to delete this session? This action cannot be undone."),
                 actions=[
-                    ft.ElevatedButton(text="Close", on_click=lambda e: [setattr(dialog, "open", False), page.update()])
+                    ft.TextButton("Cancel", on_click=lambda e: setattr(confirm_dialog, 'open', False) or page.update()),
+                    ft.TextButton("Delete", on_click=confirm_delete),
                 ],
                 actions_alignment=ft.MainAxisAlignment.END,
-                inset_padding=ft.Padding(top=40, bottom=40, left=24, right=24),
-                shape=ft.RoundedRectangleBorder(radius=10)
             )
-            page.dialog = dialog
-            dialog.open = True
+            
+            # Show the dialog
+            page.dialog = confirm_dialog
+            confirm_dialog.open = True
             page.update()
+        
+        # Create a grid or column layout depending on number of cards
+        if len(session_cards) > 1:
+            # For multiple sessions, use a responsive grid layout
+            return ft.Container(
+                content=ft.ResponsiveRow(
+                    [
+                        ft.Column([card], col={"sm": 12, "md": 6, "lg": 4})
+                        for card in session_cards
+                    ],
+                ),
+                padding=10,
+                expand=True,
+                bgcolor="#2C2C2C",
+                border_radius=10,
+            )
         else:
-            # For other datasets, display a simple one-row table based on its keys and values.
-            dataset = next((d for d in agent_data_sets if d['Name'] == data_name), None)
-            if dataset is None:
-                dataset = next((d for d in weights_data_sets if d['Name'] == data_name), None)
-            if dataset is None:
-                return
-            headers = list(dataset.keys())
-            values = list(map(str, dataset.values()))
-            data_table = ft.DataTable(
-                columns=[ft.DataColumn(ft.Text(header)) for header in headers],
-                rows=[
-                    ft.DataRow(
-                        cells=[ft.DataCell(ft.Text(value)) for value in values]
-                    )
-                ]
+            # For a single session, center it in the container
+            return ft.Container(
+                content=ft.Column(
+                    session_cards,
+                    alignment=ft.MainAxisAlignment.START,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+                padding=20,
+                expand=True,
+                bgcolor="#2C2C2C",
+                border_radius=10,
+            )
+    
+    # Function to create the Alternatives tab content
+    def create_alternatives_tab():
+        """Create content showing saved alternative datasets"""
+        
+        # Extract all unique alternatives datasets
+        all_alternatives = []
+        
+        for session in loaded_data.get("saved_sessions", []):
+            data_package = session.get("data", {})
+            
+            if "alternatives" in data_package:
+                # Add session metadata
+                alt_data = {
+                    "alternatives": data_package["alternatives"],
+                    "session_name": session.get("session_name", "Unnamed Session"),
+                    "timestamp": session.get("timestamp", "Unknown date")
+                }
+                all_alternatives.append(alt_data)
+        
+        if not all_alternatives:
+            return ft.Container(
+                content=ft.Column(
+                    [
+                        ft.Text("No saved alternatives datasets found", size=16, color="white"),
+                        ft.Text(
+                            "Alternatives data from your saved sessions will appear here.",
+                            size=14, color="white70", italic=True
+                        )
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+                bgcolor="#2C2C2C",
+                border_radius=10,
+                padding=20,
+                expand=True,
+                height=400
             )
         
-        def close_dialog(e):
-            dialog.open = False
+        # Sort alternatives by timestamp (newest first)
+        sorted_alternatives = sorted(
+            all_alternatives, 
+            key=lambda x: datetime.strptime(x.get("timestamp", "1970-01-01 00:00:00"), "%Y-%m-%d %H:%M:%S"),
+            reverse=True
+        )
+        
+        # Create a card for each alternatives dataset
+        alt_cards = []
+        
+        for i, alt_data in enumerate(sorted_alternatives):
+            # Get metadata
+            session_name = alt_data.get("session_name", f"Alternatives {i+1}")
+            timestamp = alt_data.get("timestamp", "Unknown date")
+            
+            # Get alternatives data
+            alternatives = alt_data.get("alternatives", [])
+            
+            # Calculate number of alternatives and criteria
+            if alternatives:
+                num_alternatives = len(alternatives)
+                num_criteria = len(alternatives[0]) - 1 if len(alternatives[0]) > 1 else 0
+            else:
+                num_alternatives = 0
+                num_criteria = 0
+            
+            # Function to handle using this alternatives dataset
+            def create_use_handler(alt_data):
+                def use_alternatives(e):
+                    # Store the alternatives data in client storage
+                    page.client_storage.set("loaded_alternatives", alt_data["alternatives"])
+                    
+                    # Navigate to the input page 
+                    page.go("/input")
+                
+                return use_alternatives
+            
+            # Create a card for this alternatives dataset
+            alt_card = ft.Card(
+                content=ft.Container(
+                    content=ft.Column([
+                        ft.ListTile(
+                            leading=ft.Icon(ft.icons.LIST_ALT, color="#FBBC05"),
+                            title=ft.Text(f"Alternatives from {session_name}", 
+                                         size=16, 
+                                         weight=ft.FontWeight.BOLD, 
+                                         color="white"),
+                            subtitle=ft.Text(f"Saved on: {timestamp}", color="white70"),
+                        ),
+                        ft.Divider(color="white24", height=1),
+                        ft.Container(
+                            content=ft.Column([
+                                ft.Text(f"Alternatives: {num_alternatives}", color="white"),
+                                ft.Text(f"Criteria: {num_criteria}", color="white"),
+                            ], spacing=5),
+                            padding=ft.padding.only(left=15, right=15, bottom=10)
+                        ),
+                        ft.Container(
+                            content=ft.ElevatedButton(
+                                "Use Alternatives",
+                                icon=ft.icons.OPEN_IN_NEW,
+                                on_click=create_use_handler(alt_data),
+                                style=ft.ButtonStyle(
+                                    bgcolor="#FBBC05",
+                                    color="black",
+                                    overlay_color=ft.colors.TRANSPARENT,
+                                    shape=ft.RoundedRectangleBorder(radius=8),
+                                    elevation=3,
+                                    shadow_color="#000000",
+                                ),
+                            ),
+                            padding=ft.padding.only(left=15, right=15, bottom=15),
+                            alignment=ft.alignment.center
+                        ),
+                    ]),
+                    width=350,
+                    bgcolor="#1C1C1C",
+                    border=ft.border.all(1, "#3C3C3C"),
+                    border_radius=10,
+                ),
+                elevation=3
+            )
+            
+            alt_cards.append(alt_card)
+        
+        # Create a responsive grid for the cards
+        return ft.Container(
+            content=ft.ResponsiveRow(
+                [
+                    ft.Column([card], col={"sm": 12, "md": 6, "lg": 4})
+                    for card in alt_cards
+                ],
+            ),
+            padding=10,
+            expand=True,
+            bgcolor="#2C2C2C",
+            border_radius=10,
+        )
+    
+    # Function to create the Weights tab content
+    def create_weights_tab():
+        """Create content showing saved weights/criteria datasets"""
+        
+        # Extract all unique weights datasets
+        all_weights = []
+        
+        for session in loaded_data.get("saved_sessions", []):
+            data_package = session.get("data", {})
+            
+            if "weights" in data_package:
+                # Add session metadata
+                weight_data = {
+                    "weights": data_package["weights"],
+                    "session_name": session.get("session_name", "Unnamed Session"),
+                    "timestamp": session.get("timestamp", "Unknown date")
+                }
+                all_weights.append(weight_data)
+        
+        if not all_weights:
+            return ft.Container(
+                content=ft.Column(
+                    [
+                        ft.Text("No saved weights datasets found", size=16, color="white"),
+                        ft.Text(
+                            "Weights data from your saved sessions will appear here.",
+                            size=14, color="white70", italic=True
+                        )
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+                bgcolor="#2C2C2C",
+                border_radius=10,
+                padding=20,
+                expand=True,
+                height=400
+            )
+        
+        # Sort weights by timestamp (newest first)
+        sorted_weights = sorted(
+            all_weights, 
+            key=lambda x: datetime.strptime(x.get("timestamp", "1970-01-01 00:00:00"), "%Y-%m-%d %H:%M:%S"),
+            reverse=True
+        )
+        
+        # Create a card for each weights dataset
+        weight_cards = []
+        
+        for i, weight_data in enumerate(sorted_weights):
+            # Get metadata
+            session_name = weight_data.get("session_name", f"Weights {i+1}")
+            timestamp = weight_data.get("timestamp", "Unknown date")
+            
+            # Get weights data
+            weights = weight_data.get("weights", [])
+            
+            # Calculate number of criteria and DMs
+            if weights:
+                # Get a sample of the data to analyze structure
+                sample = weights[0]
+                if isinstance(sample, dict) and "Criterion" in sample:
+                    num_criteria = len(weights)
+                    # Check if we have DM columns
+                    dm_cols = [col for col in sample.keys() if col.startswith("DM")]
+                    num_dms = len(dm_cols)
+                else:
+                    num_criteria = len(weights)
+                    num_dms = 1
+            else:
+                num_criteria = 0
+                num_dms = 0
+            
+            # Function to handle using this weights dataset
+            def create_use_handler(weight_data):
+                def use_weights(e):
+                    # Store the weights data in client storage
+                    page.client_storage.set("loaded_weights", weight_data["weights"])
+                    
+                    # Navigate to the input page
+                    page.go("/input")
+                
+                return use_weights
+            
+            # Create a card for this weights dataset
+            weight_card = ft.Card(
+                content=ft.Container(
+                    content=ft.Column([
+                        ft.ListTile(
+                            leading=ft.Icon(ft.icons.SCALE, color="#EA4335"),
+                            title=ft.Text(f"Weights from {session_name}", 
+                                         size=16, 
+                                         weight=ft.FontWeight.BOLD, 
+                                         color="white"),
+                            subtitle=ft.Text(f"Saved on: {timestamp}", color="white70"),
+                        ),
+                        ft.Divider(color="white24", height=1),
+                        ft.Container(
+                            content=ft.Column([
+                                ft.Text(f"Criteria: {num_criteria}", color="white"),
+                                ft.Text(f"Decision Makers: {num_dms}", color="white"),
+                            ], spacing=5),
+                            padding=ft.padding.only(left=15, right=15, bottom=10)
+                        ),
+                        ft.Container(
+                            content=ft.ElevatedButton(
+                                "Use Weights",
+                                icon=ft.icons.OPEN_IN_NEW,
+                                on_click=create_use_handler(weight_data),
+                                style=ft.ButtonStyle(
+                                    bgcolor="#EA4335",
+                                    color="white",
+                                    overlay_color=ft.colors.TRANSPARENT,
+                                    shape=ft.RoundedRectangleBorder(radius=8),
+                                    elevation=3,
+                                    shadow_color="#000000",
+                                ),
+                            ),
+                            padding=ft.padding.only(left=15, right=15, bottom=15),
+                            alignment=ft.alignment.center
+                        ),
+                    ]),
+                    width=350,
+                    bgcolor="#1C1C1C",
+                    border=ft.border.all(1, "#3C3C3C"),
+                    border_radius=10,
+                ),
+                elevation=3
+            )
+            
+            weight_cards.append(weight_card)
+        
+        # Create a responsive grid for the cards
+        return ft.Container(
+            content=ft.ResponsiveRow(
+                [
+                    ft.Column([card], col={"sm": 12, "md": 6, "lg": 4})
+                    for card in weight_cards
+                ],
+            ),
+            padding=10,
+            expand=True,
+            bgcolor="#2C2C2C",
+            border_radius=10,
+        )
+    
+    # Create the tab buttons
+    tabs = [
+        {"text": "Saved Sessions", "icon": ft.icons.FOLDER_SPECIAL, "content": create_sessions_tab},
+        {"text": "Alternatives", "icon": ft.icons.LIST_ALT, "content": create_alternatives_tab},
+        {"text": "Weights", "icon": ft.icons.SCALE, "content": create_weights_tab},
+    ]
+    
+    tab_buttons = []
+    
+    # Function to switch tabs
+    def create_tab_click_handler(index):
+        def handle_click(e):
+            # Update all buttons
+            for i, btn_data in enumerate(zip(tab_buttons, tabs)):
+                btn, tab_info = btn_data
+                icon_widget = btn.content.controls[0] # Get the Icon widget
+
+                if i == index:
+                    btn.bgcolor = "white"
+                    btn.color = "#2C2C2C" # Text color
+                    icon_widget.color = "#2C2C2C" # Icon color
+                else:
+                    btn.bgcolor = "#1C1C1C" # Use the card background color for unselected
+                    btn.color = "white" # Text color
+                    icon_widget.color = "white" # Icon color
+
+            # Set the content - calling the tab content function
+            content_ref.current.content = tabs[index]["content"]()
+
             page.update()
-        
-        dialog = ft.AlertDialog(
-            title=ft.Text(f"Viewing {data_name} Data"),
-            content=ft.Container(
-                content=data_table,
-                width=1200,
-                height=800,
+        return handle_click
+
+    # Create tab buttons
+    for i, tab in enumerate(tabs):
+        is_selected = (i == 0)
+        text_color = "#2C2C2C" if is_selected else "white"
+        icon_color = "#2C2C2C" if is_selected else "white"
+        bg_color = "white" if is_selected else "#1C1C1C" # Use card background for unselected
+
+        btn = ft.ElevatedButton(
+            content=ft.Row(
+                [
+                    ft.Icon(name=tab["icon"], size=18, color=icon_color), # Set initial icon color
+                    ft.Text(tab["text"], size=14)
+                ],
+                spacing=5,
+                alignment=ft.MainAxisAlignment.CENTER
             ),
-            actions=[
-                ft.ElevatedButton(text="Close", on_click=close_dialog)
-            ],
-            actions_alignment=ft.MainAxisAlignment.END,
-            inset_padding=ft.Padding(top=40, bottom=40, left=24, right=24),
-            shape=ft.RoundedRectangleBorder(radius=10)
-        )
-        page.dialog = dialog
-        dialog.open = True
-        page.update()
-    
-    def show_create_dialog(data_type):
-        # Decide label for third field based on data type.
-        third_field_label = "Alternatives" if data_type == "Agent" else "DMs"
-        name_field = ft.TextField(label="Name")
-        criteria_field = ft.TextField(label="Criteria")
-        third_field = ft.TextField(label=third_field_label)
-        submit_button = ft.ElevatedButton(
-            text="Submit", 
-            on_click=lambda e: submit_new_data(data_type, name_field, criteria_field, third_field)
-        )
-        content_container = ft.Container(
-            content=ft.Column(
-                controls=[
-                    name_field,
-                    criteria_field,
-                    third_field
-                ],
-                spacing=10
+            style=ft.ButtonStyle(
+                bgcolor=bg_color, # Set initial background color
+                color=text_color, # Set initial text color
+                shape=ft.RoundedRectangleBorder(radius=8),
+                padding=ft.padding.all(12),
+                elevation=0, # Keep elevation low for a flatter tab look
+                overlay_color=ft.colors.with_opacity(0.1, ft.colors.WHITE if not is_selected else ft.colors.BLACK), # Subtle overlay
             ),
-            width=300,   # Fixed width for the dialog content
-            height=200   # Fixed height for the dialog content
+            # elevation=0, # Moved elevation to ButtonStyle
+            on_click=create_tab_click_handler(i)
         )
+        tab_buttons.append(btn)
+
+    # Function to handle sign out
+    def sign_out(e):
+        # Clear all user-related data
+        page.client_storage.remove("user_data")
+        page.client_storage.remove("user_id")  # Make sure to remove user_id too
+        page.client_storage.remove("id_token")
+        page.client_storage.remove("refresh_token")
         
-        dialog = ft.AlertDialog(
-            title=ft.Text(f"Add New {data_type}"),
-            content=content_container,
-            actions=[submit_button],
-            actions_alignment=ft.MainAxisAlignment.END,
-            inset_padding=ft.Padding(top=40, bottom=40, left=24, right=24),
-            shape=ft.RoundedRectangleBorder(radius=10)
-        )
-        page.dialog = dialog
-        dialog.open = True
-        page.update()
+        # Show a message
+        page.snack_bar = ft.SnackBar(ft.Text("Signed out successfully"))
+        page.snack_bar.open = True
+        
+        # Go to home page
+        page.go("/")
     
-    def submit_new_data(data_type, name_field, criteria_field, third_field):
-        name = name_field.value
-        criteria = criteria_field.value
-        third_val = third_field.value
-        if data_type == "Agent":
-            new_view_row = ft.Row(
-                controls=[
-                    ft.Text(name),
-                    ft.Text(criteria),
-                    ft.Text(third_val),
-                    ft.ElevatedButton(
-                        text="View",
-                        on_click=lambda e, name=name: view_data(name)
-                    )
-                ],
-                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                spacing=10
-            )
-            agent_rows.controls.append(new_view_row)
-            agent_rows.update()
-        elif data_type == "Weight":
-            new_view_row = ft.Row(
-                controls=[
-                    ft.Text(name),
-                    ft.Text(criteria),
-                    ft.Text(third_val),
-                    ft.ElevatedButton(
-                        text="View",
-                        on_click=lambda e, name=name: view_data(name)
-                    )
-                ],
-                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                spacing=10
-            )
-            weights_rows.controls.append(new_view_row)
-            weights_rows.update()
-        # Close the dialog after submission.
-        page.dialog.open = False
-        page.update()
-    
+    # Return profile view
     return ft.View(
         "/profile",
         [
-            ft.AppBar(
-                title=ft.Text("Profile"),
-                bgcolor=ft.colors.BLUE_GREY_900,
-                leading=ft.IconButton(icon=ft.icons.ARROW_BACK, on_click=lambda _: page.go("/"))
+            # Navigation bar
+            ft.Container(
+                bgcolor="#EAEAEA",
+                padding=ft.padding.symmetric(vertical=15, horizontal=15),
+                content=ft.Row(
+                    [
+                        ft.IconButton(
+                            icon=ft.icons.HOME,
+                            on_click=lambda _: page.go("/"),
+                            tooltip="Go to Home"
+                        ),
+                        ft.Container(expand=True),
+                        ft.ElevatedButton(
+                            "Sign out", 
+                            bgcolor="#2C2C2C", 
+                            color="white", 
+                            on_click=sign_out,
+                            icon=ft.icons.LOGOUT
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN
+                )
             ),
+            
+            # Main content
             ft.Container(
                 content=ft.Column(
-                    controls=[
+                    [
+                        # Profile header
                         ft.Container(
-                            content=ft.Icon(name=ft.icons.ACCOUNT_CIRCLE, size=150, color=ft.colors.BLUE_GREY_900),
-                            alignment=ft.alignment.center,
-                        ),
-                        ft.Container(
-                            content=ft.Text("User Name", style=ft.TextStyle(size=20, weight=ft.FontWeight.BOLD)),
-                            alignment=ft.alignment.center,
-                        ),
-                        ft.Row(
-                            controls=[
-                                # Agent Data Container
-                                ft.Container(
-                                    content=ft.Column(
-                                        controls=[
-                                            ft.Row(
-                                                controls=[
-                                                    ft.Text("Agent Datasets", style=ft.TextStyle(size=20, weight=ft.FontWeight.BOLD)),
-                                                    ft.IconButton(
-                                                        icon=ft.icons.FORMAT_LIST_BULLETED_ADD,
-                                                        tooltip="Add New Agent Dataset",
-                                                        on_click=lambda _: show_create_dialog("Agent")
+                            content=ft.Column(
+                                [
+                                    ft.Row(
+                                        [
+                                            ft.Container(
+                                                content=ft.CircleAvatar(
+                                                    content=ft.Text(
+                                                        display_name[0].upper(),
+                                                        size=32,
+                                                        weight=ft.FontWeight.BOLD,
+                                                        color="#2C2C2C"
+                                                    ),
+                                                    bgcolor="#34A853",
+                                                    radius=40
+                                                ),
+                                                margin=ft.margin.only(right=20)
+                                            ),
+                                            ft.Column(
+                                                [
+                                                    ft.Text(
+                                                        display_name,
+                                                        size=24,
+                                                        weight=ft.FontWeight.BOLD,
+                                                        color="white"
+                                                    ),
+                                                    ft.Text(
+                                                        user_data.get("email", ""),
+                                                        size=16,
+                                                        color="#CCCCCC"
                                                     )
                                                 ],
-                                                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                                                spacing=10
-                                            ),
-                                            # Header Row
-                                            ft.Row(
-                                                controls=[
-                                                    ft.Text("Name", weight=ft.FontWeight.BOLD),
-                                                    ft.Text("Criteria", weight=ft.FontWeight.BOLD),
-                                                    ft.Text("Alternatives", weight=ft.FontWeight.BOLD),
-                                                    ft.Text("Actions", weight=ft.FontWeight.BOLD),
-                                                ],
-                                                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                                                spacing=10
-                                            ),
-                                            agent_rows
-                                        ],
+                                                spacing=5
+                                            )
+                                        ]
+                                    ),
+                                ],
+                                spacing=20
+                            ),
+                            padding=30,
+                            border_radius=10,
+                            bgcolor="#1C1C1C",
+                            width=600
+                        ),
+                        
+                        # Tab bar
+                        ft.Container(
+                            content=ft.Card(
+                                content=ft.Container(
+                                    content=ft.Row(
+                                        tab_buttons,
+                                        alignment=ft.MainAxisAlignment.CENTER,
                                         spacing=10
                                     ),
-                                    width=500,
-                                    padding=20,
-                                    margin=10,
-                                    bgcolor=ft.colors.SURFACE_VARIANT,
-                                    border_radius=5
+                                    padding=ft.padding.all(10),
+                                    bgcolor="#1C1C1C"
                                 ),
-                                # Weights Data Container
-                                ft.Container(
-                                    content=ft.Column(
-                                        controls=[
-                                            ft.Row(
-                                                controls=[
-                                                    ft.Text("Weight Datasets", style=ft.TextStyle(size=20, weight=ft.FontWeight.BOLD)),
-                                                    ft.IconButton(
-                                                        icon=ft.icons.FORMAT_LIST_BULLETED_ADD,
-                                                        tooltip="Add New Weight Datasets",
-                                                        on_click=lambda _: show_create_dialog("Weight")
-                                                    )
-                                                ],
-                                                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                                                spacing=10
-                                            ),
-                                            ft.Row(
-                                                controls=[
-                                                    ft.Text("Name", weight=ft.FontWeight.BOLD),
-                                                    ft.Text("Criteria", weight=ft.FontWeight.BOLD),
-                                                    ft.Text("DMs", weight=ft.FontWeight.BOLD),
-                                                    ft.Text("Actions", weight=ft.FontWeight.BOLD),
-                                                ],
-                                                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                                                spacing=10
-                                            ),
-                                            weights_rows
-                                        ],
-                                        spacing=10
-                                    ),
-                                    width=500,
-                                    padding=20,
-                                    margin=10,
-                                    bgcolor=ft.colors.SURFACE_VARIANT,
-                                    border_radius=5
-                                ),
-                            ],
-                            alignment=ft.MainAxisAlignment.CENTER,
-                            spacing=20
-                        )
+                                elevation=4
+                            ),
+                            padding=ft.padding.only(top=20, bottom=5),
+                        ),
+                        
+                        # Content area
+                        ft.Container(
+                            ref=content_ref,
+                            content=create_sessions_tab(),  # Default to sessions tab
+                            expand=True,
+                            padding=ft.padding.all(5),
+                        ),
                     ],
-                    spacing=20,
-                    scroll=ft.ScrollMode.AUTO,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    alignment=ft.MainAxisAlignment.START,
+                    spacing=10,
                     expand=True
                 ),
-                alignment=ft.alignment.top_center,
                 padding=20,
-                expand=True
-            ),
+                expand=True,
+                bgcolor="#2C2C2C",
+                alignment=ft.alignment.top_center
+            )
         ]
     )

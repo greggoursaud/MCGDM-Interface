@@ -7,9 +7,18 @@ import traceback  # Import traceback at the top level of the file
 import tempfile
 import os
 import json
+import time  # Add time module for timing operations
+from scipy.optimize import differential_evolution  # Add this import for optimization
 from dashboard_page import build_dashboard_page
+# Add import for optimization approach
+from optimisation_hives_approach2 import approach2_hives_first_then_optimize, get_hives_weights
+from user_utils import get_navigation_controls
 
 def build_input_page(page: ft.Page):
+    # Get user data and navigation controls
+    user_data = page.client_storage.get("user_data")
+    nav_controls = get_navigation_controls(page, user_data)
+    
     # State variables
     criteria_count = ft.Ref[ft.TextField]()
     alternatives_count = ft.Ref[ft.TextField]()
@@ -24,6 +33,9 @@ def build_input_page(page: ft.Page):
     step_1 = ft.Ref[ft.Container]()
     step_2 = ft.Ref[ft.Container]()
     step_3 = ft.Ref[ft.Container]()
+    
+    # Add reference for optimization option
+    optimization_checkbox = ft.Ref[ft.Checkbox]()
     
     # Progress indicator references
     step1_circle = ft.Ref[ft.Container]()
@@ -368,17 +380,148 @@ def build_input_page(page: ft.Page):
             alt_df_process.to_csv(alt_csv_path)
             weight_df_process.to_csv(weight_csv_path)
             
-            # Run HIVES algorithm
-            results = hives_algorithm(alt_csv_path, weight_csv_path)
-
+            # Check if optimization approach is selected
+            use_optimization = False
+            if optimization_checkbox.current:
+                use_optimization = optimization_checkbox.current.value
+                
+            # Debug print to check if optimization is being used
+            print(f"Using optimization approach: {use_optimization}")
             
-            # Save data to client storage
-            dashboard_data = {
-                "results": results.to_dict('records'),
-                "alternatives": alt_df.to_dict('records'),
-                "weights": weight_df.to_dict('records'),
-                "has_plot": True  # Flag to indicate parallel plot should be generated
-            }
+            if use_optimization:
+                # Get criteria names and convert weights data to required format
+                criteria_names = list(alt_df_process.columns)
+                
+                # Convert weights dataframe to dictionary format required by optimization
+                weights_dict = {}
+                for dm_idx, dm_name in enumerate(weight_df_process.index):
+                    weights_dict[f'DM{dm_idx+1}'] = {}
+                    for criterion in weight_df_process.columns:
+                        weights_dict[f'DM{dm_idx+1}'][criterion] = weight_df_process.loc[dm_name, criterion]
+                
+                # First calculate HIVES weights directly using the imported function
+                consensus_weights, _ = get_hives_weights(weights_dict, criteria_names)
+                
+                # Define the real problem (user's data) instead of test problem
+                def evaluate_real_problem(x):
+                    """
+                    Evaluate using the user's actual alternatives data
+                    x: array of decision variables (represents weights for alternatives)
+                    returns: array of objective values (criteria)
+                    """
+                    # Normalize weights to sum to 1
+                    x_normalized = x / np.sum(x)
+                    
+                    # Calculate weighted score for each criterion
+                    f_values = np.zeros(len(criteria_names))
+                    
+                    # For each criterion, calculate weighted sum across alternatives
+                    for i, criterion in enumerate(criteria_names):
+                        criterion_values = np.array(alt_df_process[criterion])
+                        f_values[i] = np.sum(x_normalized * criterion_values)
+                    
+                    return f_values
+                
+                # Define which objectives should be minimized (default: all maximizing)
+                # In future versions this could be configured by the user
+                minimize_objectives = [False] * len(criteria_names)
+                
+                # Find ideal and nadir points by sampling
+                n_alternatives = alt_df_process.shape[0]
+                population_size = 1000
+                sample_solutions = np.random.random((population_size, n_alternatives))
+                sample_solutions = np.array([x/np.sum(x) for x in sample_solutions])
+                sample_evaluations = np.array([evaluate_real_problem(x) for x in sample_solutions])
+                
+                # Adjust based on minimization/maximization
+                sample_evaluations_adjusted = sample_evaluations.copy()
+                for i, minimize in enumerate(minimize_objectives):
+                    if not minimize:  # If maximizing, negate the values
+                        sample_evaluations_adjusted[:, i] = -sample_evaluations[:, i]
+                
+                # Find ideal and nadir points
+                z_ideal = np.min(sample_evaluations_adjusted, axis=0)
+                z_nadir = np.max(sample_evaluations_adjusted, axis=0)
+                
+                # Define the scalarization function with fewer iterations for faster results
+                def tchebycheff_scalarization(x, weights):
+                    x_normalized = x / np.sum(x)
+                    f_values = evaluate_real_problem(x_normalized)
+                    
+                    weights_normalized = np.array(weights) / 100.0
+                    
+                    f_adjusted = f_values.copy()
+                    for i, minimize in enumerate(minimize_objectives):
+                        if not minimize:
+                            f_adjusted[i] = -f_values[i]
+                    
+                    f_normalized = (f_adjusted - z_ideal) / (z_nadir - z_ideal)
+                    weighted_diffs = weights_normalized * f_normalized
+                    
+                    return np.max(weighted_diffs) + 0.001 * np.sum(weighted_diffs)
+                
+                # Set up bounds for the weights (one per alternative)
+                bounds = [(0, 1) for _ in range(n_alternatives)]
+                
+                # Run optimization with reduced iterations for responsiveness
+                start_time = time.time()
+                result = differential_evolution(
+                    lambda x: tchebycheff_scalarization(x, consensus_weights),
+                    bounds=bounds,
+                    strategy='best1bin',
+                    maxiter=100,  # Reduced from 1000
+                    popsize=10,   # Reduced from 15
+                    tol=1e-6,     # Less strict tolerance
+                    mutation=(0.5, 1.0),
+                    recombination=0.7
+                )
+                execution_time = time.time() - start_time
+                
+                # Extract results
+                x_optimal = result.x / np.sum(result.x)  # Normalize
+                f_optimal = evaluate_real_problem(x_optimal)
+                
+                # Create results for dashboard
+                results = pd.DataFrame({
+                    'Criterion': criteria_names,
+                    'Weight': consensus_weights,
+                    'Value': f_optimal
+                })
+                
+                # Create alternative selection data
+                alt_selection = pd.DataFrame({
+                    'Alternative': alt_df_process.index.tolist(),
+                    'Weight': x_optimal * 100  # Convert to percentage
+                })
+                
+                # Add metadata about optimization
+                optimization_metadata = {
+                    'is_optimization': True,
+                    'x_optimal': x_optimal.tolist(),
+                    'execution_time': execution_time,
+                    'alternative_weights': alt_selection.to_dict('records')
+                }
+                
+                dashboard_data = {
+                    "results": results.to_dict('records'),
+                    "alternatives": alt_df.to_dict('records'),
+                    "weights": weight_df.to_dict('records'),
+                    "has_plot": True,
+                    "optimization_data": optimization_metadata
+                }
+                    
+            else:
+                # Run HIVES algorithm (original approach)
+                results = hives_algorithm(alt_csv_path, weight_csv_path)
+
+                
+                # Save data to client storage
+                dashboard_data = {
+                    "results": results.to_dict('records'),
+                    "alternatives": alt_df.to_dict('records'),
+                    "weights": weight_df.to_dict('records'),
+                    "has_plot": True  # Flag to indicate parallel plot should be generated
+                }
             
             # Store in client storage for main.py to use
             page.client_storage.set("dashboard_data", dashboard_data)
@@ -392,7 +535,7 @@ def build_input_page(page: ft.Page):
             page.snack_bar = ft.SnackBar(ft.Text(f"Error processing data: {str(e)}"))
             page.snack_bar.open = True
             page.update()
-
+    
     # Step 1 - Define problem parameters
     step1_container = ft.Container(
         content=ft.Column(
@@ -448,6 +591,32 @@ def build_input_page(page: ft.Page):
                                 cursor_color="white",
                                 label_style=ft.TextStyle(color="white")
                             ),
+                            ft.Divider(color="white", height=1),
+                            # Centered Advanced Options Section
+                            ft.Column(
+                                [
+                                    ft.Text(
+                                        "Advanced Options (Beta)", # Added (Beta)
+                                        style=ft.TextStyle(size=18, weight=ft.FontWeight.BOLD, color="white")
+                                    ),
+                                    ft.Checkbox(
+                                        ref=optimization_checkbox,
+                                        label="Use Optimization Approach (HIVES + Optimization)",
+                                        value=False,
+                                        fill_color="#4CAF50",
+                                        check_color="white",
+                                        label_style=ft.TextStyle(color="white", weight=ft.FontWeight.BOLD),
+                                    ),
+                                    ft.Text(
+                                        "The optimization approach uses HIVES to determine consensus weights, then finds a single optimal solution that best satisfies all criteria.",
+                                        style=ft.TextStyle(color="white", italic=True, size=12), # Reduced size
+                                        text_align=ft.TextAlign.CENTER, # Center align text
+                                        width=300 # Constrain width for better centering
+                                    ),
+                                ],
+                                horizontal_alignment=ft.CrossAxisAlignment.CENTER, # Center items in this column
+                                spacing=10 # Add some spacing
+                            ),
                             ft.ElevatedButton(
                                 text="Continue to Alternatives Entry",
                                 on_click=generate_forms,
@@ -460,7 +629,7 @@ def build_input_page(page: ft.Page):
                             ),
                         ],
                         spacing=20,
-                        horizontal_alignment=ft.CrossAxisAlignment.CENTER
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER # This centers the entire inner column content
                     ),
                     padding=20,
                     border=ft.border.all(1, "white"),
@@ -468,7 +637,7 @@ def build_input_page(page: ft.Page):
                 )
             ],
             alignment=ft.MainAxisAlignment.START,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER, # This centers the main step container's content
             spacing=20
         ),
         ref=step_1
@@ -535,7 +704,7 @@ def build_input_page(page: ft.Page):
         ref=step_2
     )
     
-    # Step 3 - Weights Data Entry
+    # Step 3 - Weights Data Entry - remove the optimization option that we moved to Step 1
     step3_container = ft.Container(
         content=ft.Column(
             [
@@ -665,13 +834,8 @@ def build_input_page(page: ft.Page):
                             tooltip="Go to Home"
                         ),
                         ft.Container(expand=True),
-                        ft.Row(
-                            [
-                                ft.ElevatedButton("Sign in", bgcolor="#2C2C2C", color="white", on_click=lambda _: page.go("/login")),
-                                ft.ElevatedButton("Register", bgcolor="white", color="black", on_click=lambda _: page.go("/register")),
-                            ],
-                            spacing=15
-                        ),
+                        # Use the nav_controls variable instead of hard-coded buttons
+                        nav_controls,
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     spacing=15

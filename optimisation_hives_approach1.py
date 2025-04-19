@@ -65,30 +65,89 @@ def visualize_alternatives(F_opt, objective_names=None, top_indices=None, highli
         objective_names = [f'Objective {i+1}' for i in range(F_opt.shape[1])]
     
     if F_opt.shape[1] == 3:  # If we have 3 objectives
-        fig = plt.figure(figsize=(10, 8))
-        ax = fig.add_subplot(111, projection='3d')
+        fig = plt.figure(figsize=(12, 10))
         
-        # Plot all solutions
-        ax.scatter(F_opt[:, 0], F_opt[:, 1], F_opt[:, 2], c='blue', marker='o', alpha=0.5)
+        # Create a 3D scatter plot
+        ax1 = fig.add_subplot(221, projection='3d')
+        scatter = ax1.scatter(F_opt[:, 0], F_opt[:, 1], F_opt[:, 2], 
+                      c=np.sum(F_opt, axis=1), cmap='viridis', 
+                      marker='o', alpha=0.7, s=50)
+        plt.colorbar(scatter, ax=ax1, label='Sum of objectives')
         
         # Highlight top solutions if provided
         if top_indices is not None:
-            ax.scatter(F_opt[top_indices, 0], F_opt[top_indices, 1], F_opt[top_indices, 2], 
+            ax1.scatter(F_opt[top_indices, 0], F_opt[top_indices, 1], F_opt[top_indices, 2], 
                       c='red', marker='*', s=200, label='Top solutions')
         
         # Highlight best solution if requested
         if highlight_best and top_indices is not None:
-            ax.scatter(F_opt[top_indices[0], 0], F_opt[top_indices[0], 1], F_opt[top_indices[0], 2], 
+            ax1.scatter(F_opt[top_indices[0], 0], F_opt[top_indices[0], 1], F_opt[top_indices[0], 2], 
                       c='green', marker='X', s=300, label='Best solution')
         
-        ax.set_xlabel(objective_names[0])
-        ax.set_ylabel(objective_names[1])
-        ax.set_zlabel(objective_names[2])
+        ax1.set_xlabel(objective_names[0])
+        ax1.set_ylabel(objective_names[1])
+        ax1.set_zlabel(objective_names[2])
+        ax1.set_title('3D Objective Space')
         
         if top_indices is not None:
-            plt.legend()
+            ax1.legend()
+        
+        # Create 2D projections for better understanding
+        # X-Y projection
+        ax2 = fig.add_subplot(222)
+        ax2.scatter(F_opt[:, 0], F_opt[:, 1], c='blue', alpha=0.5)
+        if top_indices is not None:
+            ax2.scatter(F_opt[top_indices, 0], F_opt[top_indices, 1], c='red', marker='*', s=100)
+        ax2.set_xlabel(objective_names[0])
+        ax2.set_ylabel(objective_names[1])
+        ax2.set_title(f'{objective_names[0]} vs {objective_names[1]}')
+        ax2.grid(True)
+        
+        # X-Z projection
+        ax3 = fig.add_subplot(223)
+        ax3.scatter(F_opt[:, 0], F_opt[:, 2], c='blue', alpha=0.5)
+        if top_indices is not None:
+            ax3.scatter(F_opt[top_indices, 0], F_opt[top_indices, 2], c='red', marker='*', s=100)
+        ax3.set_xlabel(objective_names[0])
+        ax3.set_ylabel(objective_names[2])
+        ax3.set_title(f'{objective_names[0]} vs {objective_names[2]}')
+        ax3.grid(True)
+        
+        # Y-Z projection
+        ax4 = fig.add_subplot(224)
+        ax4.scatter(F_opt[:, 1], F_opt[:, 2], c='blue', alpha=0.5)
+        if top_indices is not None:
+            ax4.scatter(F_opt[top_indices, 1], F_opt[top_indices, 2], c='red', marker='*', s=100)
+        ax4.set_xlabel(objective_names[1])
+        ax4.set_ylabel(objective_names[2])
+        ax4.set_title(f'{objective_names[1]} vs {objective_names[2]}')
+        ax4.grid(True)
+        
+        plt.tight_layout()
+        plt.show()
+        
+        # Also show parallel coordinates plot for better visualization of trade-offs
+        from pandas.plotting import parallel_coordinates
+        
+        # Create a DataFrame for the parallel coordinates plot
+        df = pd.DataFrame(F_opt, columns=objective_names)
+        df['Alternative'] = df.index
+        
+        if top_indices is not None:
+            # Create a column to identify top solutions
+            df['Group'] = 'Other'
+            df.loc[top_indices, 'Group'] = 'Top'
+            if highlight_best:
+                df.loc[top_indices[0], 'Group'] = 'Best'
             
-        plt.title('Pareto Front Visualization')
+            plt.figure(figsize=(12, 6))
+            parallel_coordinates(df, 'Group', colormap='viridis')
+        else:
+            plt.figure(figsize=(12, 6))
+            parallel_coordinates(df, 'Alternative', colormap='viridis')
+            
+        plt.title('Parallel Coordinates Plot of Pareto-Optimal Solutions')
+        plt.grid(True)
         plt.show()
         
     elif F_opt.shape[1] == 2:  # If we have 2 objectives
@@ -153,6 +212,9 @@ def normalize_objectives(F_opt, minimize=True):
     max_values = np.max(F_opt, axis=0)
     range_values = max_values - min_values
     
+    # Handle case where min and max are the same (to avoid division by zero)
+    range_values = np.where(range_values < 1e-10, 1.0, range_values)
+    
     if minimize:
         # Normalize to [0, 100] scale and invert (since we're minimizing)
         # 100 is the best (lowest original value), 0 is the worst (highest original value)
@@ -161,6 +223,9 @@ def normalize_objectives(F_opt, minimize=True):
         # Normalize to [0, 100] scale without inverting (for maximization)
         # 100 is the best (highest original value), 0 is the worst (lowest original value)
         F_normalized = 100 * ((F_opt - min_values) / range_values)
+    
+    # Replace any NaN values with 50 (neutral score)
+    F_normalized = np.nan_to_num(F_normalized, nan=50.0)
     
     return F_normalized
 
@@ -196,9 +261,18 @@ def approach1_optimize_first_then_hives(weights_data, objective_names=None, prob
     # Step 2: Normalize objectives for HIVES
     F_normalized = normalize_objectives(F_opt, minimize=minimize_objectives)
     
+    # Verify no NaN values in normalized data
+    if np.isnan(F_normalized).any():
+        print("Warning: NaN values found after normalization, replacing with neutral scores")
+        F_normalized = np.nan_to_num(F_normalized, nan=50.0)
+    
     # Create DataFrame for alternatives
     alternatives_df = pd.DataFrame(F_normalized, columns=objective_names)
     alternatives_df.index = [f'Alternative_{i}' for i in range(len(alternatives_df))]
+    
+    # Print first few rows to verify data
+    print("\nSample of normalized alternatives:")
+    print(alternatives_df.head())
     
     # Convert weights_data to DataFrame
     weights_df = pd.DataFrame(weights_data).T
@@ -218,6 +292,11 @@ def approach1_optimize_first_then_hives(weights_data, objective_names=None, prob
     # Apply the Score Bell function to each value in the weights_df
     score_bell_df = weights_df.apply(lambda x: x.apply(apply_score_bell, args=(Min[x.name], Q1[x.name], SICP[x.name], Q3[x.name], Max[x.name])))
 
+    # Check for NaN values in score_bell_df
+    if score_bell_df.isna().any().any():
+        print("Warning: NaN values in score bell calculations, replacing with default scores")
+        score_bell_df = score_bell_df.fillna(50.0)
+
     # Convert score_bell_df to a numpy array and calculate the percentage score matrix
     HSM = score_bell_df.to_numpy()
     lambda_matrix = calculate_percentage_score_matrix(HSM)
@@ -228,6 +307,12 @@ def approach1_optimize_first_then_hives(weights_data, objective_names=None, prob
     # Calculate the criteria weights
     criteria_weights = calculate_criteria_weights(final_dm_weights_df, weights_df)
     
+    # Check for NaN values in criteria_weights and replace them
+    for i, weight in enumerate(criteria_weights):
+        if np.isnan(weight):
+            print(f"Warning: NaN weight for {objective_names[i]}, using equal weight")
+            criteria_weights[i] = 100.0 / len(criteria_weights)
+    
     # Print the aggregated weights
     print("\nAggregated criteria weights:")
     for i, weight in enumerate(criteria_weights):
@@ -235,6 +320,11 @@ def approach1_optimize_first_then_hives(weights_data, objective_names=None, prob
 
     # Calculate the final scores for each alternative
     final_scores_df = calculate_final_scores(criteria_weights, alternatives_df)
+
+    # Check for NaN values in final scores
+    if final_scores_df.isna().any().any():
+        print("Warning: NaN values in final scores, replacing with zeros")
+        final_scores_df = final_scores_df.fillna(0.0)
 
     # Reset index to make 'Alternatives' a column
     final_scores_df = final_scores_df.reset_index().rename(columns={"index": "Alternatives"})

@@ -1,26 +1,45 @@
 import flet as ft
+from user_utils import get_navigation_controls
 
 def build_home_page(page: ft.Page):
+    # Check if user is logged in
+    user_data = page.client_storage.get("user_data")
+    
+    # Use the extracted function to get navigation controls
+    nav_controls = get_navigation_controls(page, user_data)
+    
     return ft.View(
         "/",
-        controls=[
-            # Navigation Bar
+        [
+            # Navigation bar
             ft.Container(
-                bgcolor="#EAEAEA",  # Light gray navbar
-                padding=ft.padding.symmetric(vertical=15, horizontal=40),
+                bgcolor="#EAEAEA",
+                padding=ft.padding.symmetric(vertical=15, horizontal=15),
                 content=ft.Row(
                     [
-                        ft.TextButton("Resources", on_click=lambda _: page.go("/resources")),
-                        ft.Text("About"),
-                        ft.TextButton("Contact", on_click=lambda _: page.go("/contact")),
-                        ft.ElevatedButton("Sign in", bgcolor="#2C2C2C", color="white", on_click=lambda _: page.go("/login")),
-                        ft.ElevatedButton("Register", bgcolor="white", color="black", on_click=lambda _: page.go("/register")),
+                        # Brand/logo or empty space on the left
+                        ft.Container(expand=True),  # Spacer to push everything to the right
+                        
+                        # Right side - Resources, About, Contact, and then login controls
+                        ft.Row(
+                            [
+                                # Navigation items - now moved to the right with reduced spacing
+                                ft.TextButton("Resources", on_click=lambda _: page.go("/resources")),
+                                ft.TextButton("About", on_click=lambda _: page.go("/about")),
+                                ft.TextButton("Contact", on_click=lambda _: page.go("/contact")),
+                                # Small divider between menu and login controls
+                                ft.VerticalDivider(width=1, color="#C0C0C0"),
+                                # Dynamic navigation controls (login/profile)
+                                nav_controls,
+                            ],
+                            spacing=5  # Reduced from 15 to 5 to make buttons closer together
+                        )
                     ],
-                    alignment=ft.MainAxisAlignment.END,
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     spacing=15
                 )
             ),
-
+            
             # Hero Section (Main Content)
             ft.Container(
                 expand=True,

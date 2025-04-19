@@ -1,7 +1,12 @@
 import flet as ft
 import os
+from user_utils import get_navigation_controls
 
 def build_resources_page(page: ft.Page):
+    # Get user data and navigation controls
+    user_data = page.client_storage.get("user_data")
+    nav_controls = get_navigation_controls(page, user_data)
+    
     # Function to open papers in external viewer
 
     # Create a card for each academic paper
@@ -87,13 +92,8 @@ def build_resources_page(page: ft.Page):
                             tooltip="Go to Home"
                         ),
                         ft.Container(expand=True),
-                        ft.Row(
-                            [
-                                ft.ElevatedButton("Sign in", bgcolor="#2C2C2C", color="white", on_click=lambda _: page.go("/login")),
-                                ft.ElevatedButton("Register", bgcolor="white", color="black", on_click=lambda _: page.go("/register")),
-                            ],
-                            spacing=15
-                        ),
+                        # Use the nav_controls variable instead of hard-coded buttons
+                        nav_controls,
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     spacing=15

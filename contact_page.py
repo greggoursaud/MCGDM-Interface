@@ -1,6 +1,11 @@
 import flet as ft
+from user_utils import get_navigation_controls
 
 def build_contact_page(page: ft.Page):
+
+    user_data = page.client_storage.get("user_data")
+    nav_controls = get_navigation_controls(page, user_data)
+
     return ft.View(
         "/contact",
         controls=[
@@ -16,13 +21,8 @@ def build_contact_page(page: ft.Page):
                             tooltip="Go to Home"
                         ),
                         ft.Container(expand=True),
-                        ft.Row(
-                            [
-                                ft.ElevatedButton("Sign in", bgcolor="#2C2C2C", color="white", on_click=lambda _: page.go("/login")),
-                                ft.ElevatedButton("Register", bgcolor="white", color="black", on_click=lambda _: page.go("/register")),
-                            ],
-                            spacing=15
-                        ),
+                        # Use the nav_controls variable instead of hard-coding the buttons
+                        nav_controls,
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     spacing=15

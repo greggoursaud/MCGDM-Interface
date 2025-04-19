@@ -7,8 +7,14 @@ def build_login_page(page: ft.Page):
     
     def on_login_click(e):
         # Call the firebase login function (Pyrebase based)
-        login(page, email_field.value, password_field.value)
-    
+        # The login function now handles navigation on success
+        user = login(page, email_field.value, password_field.value)
+        # Optional: Add any specific UI updates needed on this page after login attempt
+        # if user:
+        #     print("Login successful from login_page")
+        # else:
+        #     print("Login failed from login_page")
+
     return ft.View(
         "/login",
         controls=[
