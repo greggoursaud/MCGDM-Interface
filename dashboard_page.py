@@ -5,6 +5,7 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 import random
+from user_utils import get_navigation_controls  # Add this import at the top
 
 # Add nav_controls, optimization_data, parallel_plot to signature
 def build_dashboard_page(page: ft.Page, results_df=None, loaded_session=None, alternatives_df=None, weights_df=None, nav_controls=None, optimization_data=None, parallel_plot=None):
@@ -28,12 +29,13 @@ def build_dashboard_page(page: ft.Page, results_df=None, loaded_session=None, al
         # Clear the loaded session from storage after use
         page.client_storage.remove("loaded_session") # Keep the is_loaded_session flag
 
+    # If no nav_controls were provided, create them using get_navigationControls
+    if nav_controls is None:
+        user_data = page.client_storage.get("user_data")
+        nav_controls = get_navigation_controls(page, user_data)
+
     # Check if results_df is valid
     if results_df is None or results_df.empty:
-        # Define default nav_controls if None is passed
-        if nav_controls is None:
-            nav_controls = ft.Row() # Provide a default empty Row
-
         return ft.View(
             "/dashboard",
             [
@@ -54,7 +56,7 @@ def build_dashboard_page(page: ft.Page, results_df=None, loaded_session=None, al
                                 tooltip="Go to Home"
                             ),
                             ft.Container(expand=True),
-                            nav_controls,  # Use argument nav_controls here
+                            nav_controls,  # Use nav_controls here
                         ],
                         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                         spacing=15
@@ -267,7 +269,7 @@ def build_dashboard_page(page: ft.Page, results_df=None, loaded_session=None, al
                             tooltip="Go to Home"
                         ),
                         ft.Container(expand=True),
-                        nav_controls,  # Use argument nav_controls here
+                        nav_controls,  # Use nav_controls here
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     spacing=15
@@ -373,36 +375,70 @@ def create_results_view(page, results_df, optimization_data=None, alt_df=None, w
     summary_card = ft.Card(
         content=ft.Container(
             content=ft.Column([ 
-                ft.Text("Top Alternative", size=20, weight=ft.FontWeight.BOLD, color="white"),
-                ft.Text(f"{top_alt}", size=30, color="white")
-            ]),
-            width=300,
-            padding=20,
+                ft.Text(f"Top Alternative: {top_alt}", size=22, weight=ft.FontWeight.BOLD, color="white", text_align=ft.TextAlign.CENTER, no_wrap=False)
+            ],
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+            width=350,  # Wider horizontally (increased from 250)
+            height=200,  # Reduced height (from 350) to make it a proper bar shape
+            padding=ft.padding.symmetric(vertical=20, horizontal=15),
             bgcolor="#1C1C1C"
         )
     )
-
+    
     # Reference to the DataTable for updating after sort
     table_ref = ft.Ref[ft.DataTable]()
+    
+    # Flag to track if table is ready for operations
+    table_initialized = False
+
+    # Track sort state - column index and direction
+    sort_state = {
+        "column": None,
+        "ascending": True
+    }
 
     def sort_data(column):
         """Sort the data by the specified column"""
-        nonlocal sorted_df
+        nonlocal sorted_df, sort_state
+        
+        # Safety check - make sure table is initialized
+        if not table_initialized or table_ref.current is None:
+            page.snack_bar = ft.SnackBar(ft.Text("Table is not ready for sorting yet. Please try again."))
+            page.snack_bar.open = True
+            page.update()
+            return
 
         # Determine the column to sort by
         col_name = sorted_df.columns[column]
 
-        # Check if we're sorting by first column (Alternative) or by score
-        if column == 0:  # First column (Alternative name)
-            sorted_df = sorted_df.sort_values(by=col_name)
-        else:  # Any other column (likely Total Score)
-            sorted_df = sorted_df.sort_values(by=col_name, ascending=False)  # Higher scores on top
+        # Check if we're sorting by the same column as before
+        if sort_state["column"] == column:
+            # Toggle sort direction
+            sort_state["ascending"] = not sort_state["ascending"]
+        else:
+            # New column, set default sort direction
+            # For first column (alternatives), sort ascending
+            # For score columns, sort descending
+            sort_state["ascending"] = (column == 0)
+            sort_state["column"] = column
+
+        # Sort the dataframe
+        sorted_df = sorted_df.sort_values(
+            by=col_name, 
+            ascending=sort_state["ascending"]
+        )
 
         # Update the table with new rows - passing page here
         update_table_rows(page)
+        # Update column icons to show sort direction
+        update_column_icons()
 
     def update_table_rows(page):
         """Update the table rows based on the sorted dataframe"""
+        # Safety check - make sure table exists
+        if table_ref.current is None:
+            return
+            
         # Clear existing rows
         table_ref.current.rows.clear()
 
@@ -421,18 +457,43 @@ def create_results_view(page, results_df, optimization_data=None, alt_df=None, w
         # Update the page
         page.update()
 
+    def update_column_icons():
+        """Update column icons to reflect current sort state"""
+        # Safety check - make sure table exists
+        if table_ref.current is None:
+            return
+            
+        for i, col in enumerate(table_ref.current.columns):
+            # Skip columns without sort functionality
+            if i != 0 and sorted_df.columns[i] != "Total Score" and sorted_df.columns[i] != "Ranking":
+                continue
+
+            # Get the row that contains the text and icon
+            row_controls = col.content.controls
+            
+            # Find the icon button (should be the second control in the row)
+            icon_button = row_controls[1]
+            
+            # Update the icon based on sort state
+            if i == sort_state["column"]:
+                # This column is being sorted - show the direction
+                icon_button.icon = ft.icons.ARROW_UPWARD if sort_state["ascending"] else ft.icons.ARROW_DOWNWARD
+            else:
+                # Not the current sort column - show default sort icon
+                icon_button.icon = ft.icons.ARROW_DOWNWARD
+
     # Create columns with sort functionality
     table_columns = []
     for i, col in enumerate(sorted_df.columns):
         # Add sort icon to columns that can be sorted
-        if i == 0 or col == "Ranking":  # First column or score/rank columns
+        if i == 0 or col == "Total Score" or col == "Ranking":  # First column or score/rank columns
             table_columns.append(
                 ft.DataColumn(
                     ft.Row(
                         [
                             ft.Text(col, color="white"),
                             ft.IconButton(
-                                icon=ft.icons.ARROW_DOWNWARD,
+                                icon=ft.icons.ARROW_DOWNWARD,  # Default icon
                                 icon_color="white",
                                 icon_size=16,
                                 tooltip=f"Sort by {col}",
@@ -461,8 +522,8 @@ def create_results_view(page, results_df, optimization_data=None, alt_df=None, w
         table_rows.append(ft.DataRow(cells))
 
     # Create the DataTable with reference
-    results_table = ft.DataTable(
-        ref=table_ref,
+    data_table = ft.DataTable(
+        ref=table_ref,  # Assign the reference
         columns=table_columns,
         rows=table_rows,
         border=ft.border.all(1, "white"),
@@ -471,6 +532,9 @@ def create_results_view(page, results_df, optimization_data=None, alt_df=None, w
         bgcolor="#1C1C1C",
         heading_row_height=70
     )
+    
+    # Mark table as initialized after creation
+    table_initialized = True
 
     # Add optimization info if available
     optimization_info = ft.Container()
@@ -497,25 +561,34 @@ def create_results_view(page, results_df, optimization_data=None, alt_df=None, w
         )
 
     # Create a dedicated save button for saving the complete dashboard data
-    save_dashboard_button = create_save_button(page, "Save Complete Session", 
+    save_dashboard_button = create_save_button(page, "Save Session", 
                                               results_df, alt_df, weight_df, save_type="complete")
 
+    # Important: Use the same data_table instance here
     return ft.Container(
         content=ft.Column(
             [
                 ft.Text("Results", size=24, weight=ft.FontWeight.BOLD, color="white"),
-                ft.Row(
-                    [
-                        ft.Container(width=100),  # Spacer on the left
-                        summary_card,
-                        save_dashboard_button if save_dashboard_button else ft.Container(width=100),
-                    ],
-                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN
+                ft.Container(
+                    content=ft.Row(
+                        [summary_card],  # Only include the card in the row
+                        alignment=ft.MainAxisAlignment.CENTER  # Center it
+                    ),
+                    height=80,  # Reduced height
                 ),
+                # Add save button in its own row if it exists
+                ft.Container(
+                    content=ft.Row(
+                        [save_dashboard_button],
+                        alignment=ft.MainAxisAlignment.END
+                    ),
+                    visible=save_dashboard_button is not None,
+                    padding=ft.padding.only(bottom=10)
+                ) if save_dashboard_button else ft.Container(height=0),
                 ft.Container(height=10),
                 optimization_info if optimization_data else ft.Container(),
                 ft.Container(
-                    content=results_table,
+                    content=data_table,  # Use the data_table with the reference
                     padding=20,
                     border=ft.border.all(1, "white"),
                     border_radius=10,
@@ -655,32 +728,13 @@ def create_optimization_view(results_df, optimization_data):
                     margin=ft.margin.only(bottom=20)
                 ),
                 ft.Container(
-                    content=ft.Column([
-                        ft.Text("Optimal Decision Variables", size=18, weight=ft.FontWeight.BOLD, color="white"),
-                        ft.Container(
-                            content=decision_vars_table,
-                            padding=10,
-                            bgcolor="#1C1C1C"
-                        )
-                    ]),
-                    border=ft.border.all(1, "white"),
-                    border_radius=10,
-                    padding=15,
-                    bgcolor="#1C1C1C",
-                    margin=ft.margin.only(bottom=20)
+                    content=decision_vars_table,
+                    padding=10,
+                    bgcolor="#1C1C1C"
                 ),
                 ft.Container(
-                    content=ft.Column([
-                        ft.Text("Objective Values", size=18, weight=ft.FontWeight.BOLD, color="white"),
-                        ft.Container(
-                            content=value_chart, # Use the defined value_chart
-                            padding=10,
-                            bgcolor="#1C1C1C"
-                        )
-                    ]),
-                    border=ft.border.all(1, "white"),
-                    border_radius=10,
-                    padding=15,
+                    content=value_chart, # Use the defined value_chart
+                    padding=10,
                     bgcolor="#1C1C1C"
                 )
             ],
@@ -826,6 +880,12 @@ def create_radar_view(results_df):
 
     # Reference to the chart to update when selections change
     chart_ref = ft.Ref[ft.Container]()
+    
+    # Reference to debug info text for updating
+    debug_info_ref = ft.Ref[ft.Text]()
+    
+    # Enable debug mode - set to False to hide debug panel
+    debug_mode = False
 
     # List to store selected alternatives
     selected_alternatives = [alternatives[0]]  # Default: first alternative selected
@@ -857,12 +917,53 @@ def create_radar_view(results_df):
             return 0.5  # Default to middle if all values are the same
         return (value - min_vals[col]) / (max_vals[col] - min_vals[col])
 
+    def update_debug_info(message="", error=None):
+        """Update the debug information panel"""
+        if not debug_mode or debug_info_ref.current is None:
+            return
+            
+        debug_text = f"Selected alternatives: {selected_alternatives}\n"
+        debug_text += f"Total alternatives in data: {len(alternatives)}\n"
+        debug_text += f"Criteria columns: {len(criteria_cols)}\n"
+        
+        if message:
+            debug_text += f"\nMessage: {message}\n"
+            
+        if error:
+            debug_text += f"\nError: {str(error)}\n"
+            debug_text += f"Error type: {type(error).__name__}\n"
+            
+            # Add traceback for more detailed error info
+            import traceback
+            debug_text += f"\nTraceback:\n{traceback.format_exc()}"
+            
+        debug_info_ref.current.value = debug_text
+        
     def update_radar_chart():
         """Update the radar chart with currently selected alternatives"""
         try:
+            # Show loading state
+            chart_ref.current.content = ft.Column([
+                ft.ProgressRing(color="white"),
+                ft.Text("Updating chart...", color="white")
+            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER)
+            
+            # Update debug info with current selection
+            update_debug_info(f"Updating chart with {len(selected_alternatives)} alternatives")
+            
             # Filter the dataframe for selected alternatives
             selected_df = results_df[results_df[alt_col].isin(selected_alternatives)]
-
+            
+            # Check if filtering worked correctly
+            if selected_df.empty and selected_alternatives:
+                error_msg = f"No data found after filtering for alternatives: {selected_alternatives}"
+                update_debug_info(error_msg)
+                chart_ref.current.content = ft.Text(
+                    error_msg, 
+                    color="orange"
+                )
+                return
+                
             # Create a new radar plot
             fig = go.Figure()
 
@@ -897,10 +998,17 @@ def create_radar_view(results_df):
                     hoverinfo="text",
                     hovertext=hover_texts
                 ))
+                
+                # Debug: log average values
+                update_debug_info(f"Added average reference line with values: {avg_values[:3]}...")
 
             # Process the data for each selected alternative
+            traces_added = 0
             for i, (_, row) in enumerate(selected_df.iterrows()):
                 alt_name = row[alt_col]
+                
+                # Debug which alternative we're processing
+                update_debug_info(f"Processing alternative: {alt_name}")
 
                 # Get normalized values for each criterion
                 values = []
@@ -939,6 +1047,10 @@ def create_radar_view(results_df):
                     hoverinfo="text",
                     hovertext=hover_texts
                 ))
+                traces_added += 1
+
+            # Update debug info with trace count
+            update_debug_info(f"Added {traces_added} traces to the chart")
 
             # Update layout with improved settings
             fig.update_layout(
@@ -963,7 +1075,7 @@ def create_radar_view(results_df):
                 plot_bgcolor="#1C1C1C",
                 font=dict(color="white"),
                 margin=dict(l=10, r=10, t=30, b=10),  # Reduced margins
-                height=380,  # Slightly smaller height
+                height=450,  # Increased from 380 to 450 for more space
                 showlegend=True,
                 legend=dict(
                     font=dict(color="white"),
@@ -979,9 +1091,13 @@ def create_radar_view(results_df):
             # Update the chart container
             plotly_chart = PlotlyChart(fig, expand=True)
             chart_ref.current.content = plotly_chart
+            update_debug_info("Chart updated successfully")
+            
         except Exception as e:
             # Display error message if something goes wrong
             chart_ref.current.content = ft.Text(f"Error creating chart: {str(e)}", color="red")
+            # Update debug info with error details
+            update_debug_info("Error updating chart", e)
 
     # Create checkboxes for each alternative
     checkboxes = []
@@ -992,19 +1108,23 @@ def create_radar_view(results_df):
         if e.control.value:
             if alt not in selected_alternatives:
                 selected_alternatives.append(alt)
+                update_debug_info(f"Added {alt} to selections")
         else:
             if alt in selected_alternatives:
                 selected_alternatives.remove(alt)
+                update_debug_info(f"Removed {alt} from selections")
 
         # Ensure at least one alternative is selected
         if not selected_alternatives:
             e.control.value = True
             selected_alternatives.append(alt)
+            update_debug_info(f"Re-added {alt} (keeping minimum selection)")
             e.page.update()
             return
 
         # Update the chart
         update_radar_chart()
+        e.page.update()
 
     # Function to handle average reference toggle
     def on_avg_ref_change(e):
@@ -1104,7 +1224,7 @@ def create_radar_view(results_df):
     chart_container = ft.Container(
         ref=chart_ref,
         expand=True,
-        height=380,  # Match the figure height
+        height=500,  # Increased from 450 to 500 for more space at bottom
         bgcolor="#1C1C1C",
         border=ft.border.all(1, "white"),
         border_radius=10,
@@ -1146,35 +1266,66 @@ def create_radar_view(results_df):
         border=ft.border.all(1, "white"),
         border_radius=10,
         bgcolor="#2C2C2C",
-        height=380  # Match chart height
+        height=500  # Increased from 450 to 500 to match chart height
     )
+
+    # Create a debug panel
+    debug_panel = ft.Container(
+        content=ft.Column([
+            ft.Text("Debug Information", color="yellow", weight=ft.FontWeight.BOLD),
+            ft.Divider(color="yellow"),
+            ft.Text(
+                ref=debug_info_ref,
+                value="Debug information will appear here...",
+                color="yellow", 
+                selectable=True,
+                no_wrap=False,
+                size=12
+            )
+        ],
+        scroll=ft.ScrollMode.ALWAYS),  # Move scroll property here, to the Column
+        padding=10,
+        bgcolor="#2A2A2A",
+        border=ft.border.all(1, "yellow"),
+        border_radius=5,
+        visible=debug_mode,
+        margin=ft.margin.only(top=20),
+        height=300
+    )
+
+    # Add debug panel to the layout if debug mode is enabled
+    main_content = [
+        ft.Container(height=15),
+        ft.Container(
+            content=ft.Row(
+                [
+                    control_panel,
+                    ft.Container(width=15),  # Spacing
+                    ft.Container(
+                        content=chart_container,
+                        expand=True
+                    )
+                ],
+                expand=True,
+                alignment=ft.MainAxisAlignment.START
+            ),
+            expand=True
+        )
+    ]
+    
+    if debug_mode:
+        main_content.append(debug_panel)
 
     # Create the view with improved layout
     view = ft.Container(
         content=ft.Column(
-            [
-                ft.Container(height=15),
-                ft.Container(
-                    content=ft.Row(
-                        [
-                            control_panel,
-                            ft.Container(width=15),  # Spacing
-                            ft.Container(
-                                content=chart_container,
-                                expand=True
-                            )
-                        ],
-                        expand=True,
-                        alignment=ft.MainAxisAlignment.START
-                    ),
-                    expand=True
-                ),
-            ],
+            main_content,
             scroll=ft.ScrollMode.AUTO,
             expand=True,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=10,  # Added spacing between elements
         ),
-        padding=20,
+        padding=ft.padding.only(left=20, top=20, right=20, bottom=30),  # Extra padding at bottom
         expand=True
     )
 
@@ -1273,24 +1424,37 @@ def create_data_view(data_df, title_text):
     return lambda page: ft.Container(
         content=ft.Column(
             [
-                ft.Row(
-                    [
-                        # Add a placeholder container on the left for balance
-                        ft.Container(width=50), 
-                        # Title in the center
-                        ft.Text(title_text, size=24, weight=ft.FontWeight.BOLD, color="white"),
-                        # Right side: Create a specific save button for this dataset type
-                        create_save_button(
-                            page, 
-                            "Save This Dataset", 
-                            None if not is_alternatives else data_df,
-                            data_df if is_alternatives else None,
-                            data_df if is_weights else None,
-                            save_type="dataset"
-                        ) or ft.Container(width=50)
-                    ],
-                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN 
+                # Replace the row with a container containing a centered title and right-aligned button
+                ft.Container(
+                    content=ft.Stack(
+                        [
+                            # Center the title
+                            ft.Container(
+                                content=ft.Row(
+                                    [ft.Text(title_text, size=24, weight=ft.FontWeight.BOLD, color="white")],
+                                    alignment=ft.MainAxisAlignment.CENTER
+                                ),
+                                expand=True
+                            ),
+                            # Position the save button on the right if it exists
+                            ft.Container(
+                                content=create_save_button(
+                                    page, 
+                                    "Save This Dataset", 
+                                    None if not is_alternatives else data_df,
+                                    data_df if is_alternatives else None,
+                                    data_df if is_weights else None,
+                                    save_type="dataset"
+                                ),
+                                alignment=ft.alignment.top_right,
+                                visible=create_save_button(page, "", None, None, None) is not None
+                            )
+                        ],
+                    ),
+                    height=70,
+                    padding=ft.padding.only(bottom=10)
                 ),
+                
                 ft.Container(
                     content=data_table,
                     padding=20,
